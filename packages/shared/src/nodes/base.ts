@@ -51,6 +51,7 @@ export type NodeCategory =
   | 'messaging-queues'
   | 'external'
   | 'shapes'
+  | 'security'
 
 export interface BoardNode<TConfig extends NodeConfig = NodeConfig> {
   id: string
@@ -58,6 +59,7 @@ export interface BoardNode<TConfig extends NodeConfig = NodeConfig> {
   position: { x: number; y: number }
   config: TConfig
   label: string
+  description?: string
   parentId?: string
 }
 
@@ -70,5 +72,6 @@ export interface BoardEdge {
   sourcePort?: string
   targetPort?: string
   label?: string
+  description?: string
   direction?: FlowDirection
 }

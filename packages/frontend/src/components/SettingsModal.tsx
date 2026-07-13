@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useBoardStore } from '../store/boardStore.js'
 
 const MODEL_ENDPOINTS: Record<string, string> = {
@@ -28,6 +28,10 @@ export function SettingsModal() {
   const settings = useBoardStore((s) => s.ai.settings)
   const setAiSettings = useBoardStore((s) => s.setAiSettings)
 
+  const [fetchedModels, setFetchedModels] = useState<string[]>([])
+  const [fetchingModels, setFetchingModels] = useState(false)
+  const [fetchError, setFetchError] = useState('')
+
   const handleModelChange = useCallback((model: string) => {
     const endpoint = MODEL_ENDPOINTS[model]
     if (endpoint) {
@@ -36,6 +40,32 @@ export function SettingsModal() {
       setAiSettings({ ...settings, model })
     }
   }, [settings, setAiSettings])
+
+  const handleFetchModels = useCallback(async () => {
+    setFetchingModels(true)
+    setFetchError('')
+    try {
+      const res = await fetch('/api/ai/models', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiUrl: settings.apiUrl, apiKey: settings.apiKey }),
+      })
+      if (!res.ok) {
+        const err: any = await res.json()
+        throw new Error(err.error || `HTTP ${res.status}`)
+      }
+      const data: any = await res.json()
+      setFetchedModels(data.models || [])
+    } catch (err: any) {
+      setFetchError(err.message)
+      setFetchedModels([])
+    } finally {
+      setFetchingModels(false)
+    }
+  }, [settings.apiUrl, settings.apiKey])
+
+  const allKnown = [...new Set([...KNOWN_MODELS, ...fetchedModels])]
+  const isKnownModel = allKnown.includes(settings.model)
 
   if (!settingsOpen) return null
 
@@ -61,6 +91,8 @@ export function SettingsModal() {
               onChange={(e) => {
                 const val = e.target.value.replace(/^[^a-zA-Z]+/, '')
                 setAiSettings({ ...settings, apiUrl: val })
+                setFetchedModels([])
+                setFetchError('')
               }}
               placeholder="https://api.openai.com/v1"
             />
@@ -69,15 +101,31 @@ export function SettingsModal() {
             </p>
           </div>
           <div className="config-field">
+            <label>API Key</label>
+            <input
+              type="password"
+              value={settings.apiKey}
+              onChange={(e) => {
+                setAiSettings({ ...settings, apiKey: e.target.value })
+                setFetchedModels([])
+                setFetchError('')
+              }}
+              placeholder="sk-..."
+            />
+            <p style={{ fontSize: 11, color: '#666', marginTop: 2 }}>
+              Stored locally in your browser. Never sent to our server.
+            </p>
+          </div>
+          <div className="config-field">
             <label>Model</label>
             <select
-              value={KNOWN_MODELS.includes(settings.model) ? settings.model : '__custom__'}
+              value={isKnownModel ? settings.model : '__custom__'}
               onChange={(e) => handleModelChange(e.target.value)}
             >
               <optgroup label="OpenAI">
                 <option value="gpt-4o">GPT-4o</option>
                 <option value="gpt-4o-mini">GPT-4o Mini</option>
-                <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                <option value="gpt-4-turbo">GPT 4 Turbo</option>
                 <option value="o1">o1</option>
                 <option value="o3-mini">o3 Mini</option>
               </optgroup>
@@ -100,9 +148,18 @@ export function SettingsModal() {
                 <option value="opencode/gpt-4o-mini">Opencode GPT-4o Mini</option>
                 <option value="opencode/claude-sonnet-4-20250514">Opencode Claude Sonnet 4</option>
               </optgroup>
+              {fetchedModels.length > 0 && (
+                <optgroup label={`Fetched from ${settings.apiUrl}`}>
+                  {fetchedModels
+                    .filter((m) => !KNOWN_MODELS.includes(m))
+                    .map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                </optgroup>
+              )}
               <option value="__custom__">── Custom ──</option>
             </select>
-            {!KNOWN_MODELS.includes(settings.model) && (
+            {!isKnownModel && (
               <input
                 type="text"
                 value={settings.model}
@@ -112,17 +169,23 @@ export function SettingsModal() {
               />
             )}
           </div>
-          <div className="config-field">
-            <label>API Key</label>
-            <input
-              type="password"
-              value={settings.apiKey}
-              onChange={(e) => setAiSettings({ ...settings, apiKey: e.target.value })}
-              placeholder="sk-..."
-            />
-            <p style={{ fontSize: 11, color: '#666', marginTop: 2 }}>
-              Stored locally in your browser. Never sent to our server.
-            </p>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
+            <button
+              className="btn-secondary"
+              onClick={handleFetchModels}
+              disabled={fetchingModels || !settings.apiUrl || !settings.apiKey}
+              style={{ fontSize: 12, padding: '4px 12px' }}
+            >
+              {fetchingModels ? 'Fetching...' : '🔄 Fetch Available Models'}
+            </button>
+            {fetchError && (
+              <span style={{ fontSize: 11, color: '#e74c3c' }}>{fetchError}</span>
+            )}
+            {fetchedModels.length > 0 && !fetchError && (
+              <span style={{ fontSize: 11, color: '#27ae60' }}>
+                {fetchedModels.length} model{fetchedModels.length !== 1 ? 's' : ''} found
+              </span>
+            )}
           </div>
           <div style={{ marginTop: 16, padding: 12, background: '#0f0f1a', borderRadius: 6, fontSize: 12, color: '#888' }}>
             <strong style={{ color: '#aaa' }}>Note:</strong> Settings are stored in your browser's localStorage.

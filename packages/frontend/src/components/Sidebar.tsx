@@ -2,15 +2,17 @@ import { useCallback } from 'react'
 import { getNodeTypesByCategory } from '@board/shared'
 import type { NodeTypeDefinition, FlowDirection, NodeCategory } from '@board/shared'
 import { useBoardStore } from '../store/boardStore.js'
+import { Tooltip } from './Tooltip.js'
 const CATEGORIES: { key: NodeCategory; icon: string; label: string }[] = [
   { key: 'databases', icon: '🗄️', label: 'Databases' },
   { key: 'cache', icon: '⚡', label: 'Cache' },
   { key: 'network', icon: '🌐', label: 'Network' },
   { key: 'load-balancer', icon: '⚖️', label: 'Load Balancer' },
+  { key: 'security', icon: '🔒', label: 'Security' },
   { key: 'components', icon: '📦', label: 'Components' },
-  { key: 'application-server', icon: '🖥️', label: 'Application Server' },
+  { key: 'application-server', icon: '🖥️', label: 'App Server' },
+  { key: 'messaging-queues', icon: '📨', label: 'Messaging' },
   { key: 'shapes', icon: '🔲', label: 'Shapes' },
-  { key: 'messaging-queues', icon: '📨', label: 'Messaging Queues' },
 ]
 
 const FLOW_DIRECTIONS: { dir: FlowDirection; icon: string; label: string }[] = [
@@ -46,21 +48,17 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Floating button for collapsed state */}
-      {!sidebarOpen && (
-        <div className="sidebar-floating">
-          <button className="sidebar-floating-btn" onClick={toggleSidebar} style={{ fontSize: 18 }} title="Open palette">
-            ☰
-          </button>
-        </div>
-      )}
-
-      {/* Expanded palette panel */}
       {sidebarOpen && (
         <div style={{
-          width: 140, background: '#1a1a2e', color: '#eee',
-          display: 'flex', flexDirection: 'column', borderRight: '1px solid #2a2a4a',
+          width: 140,
+          height: '100%',
+          background: '#1a1a2e',
+          color: '#eee',
+          display: 'flex',
+          flexDirection: 'column',
+          borderRight: '1px solid #2a2a4a',
           overflow: 'hidden',
+          flexShrink: 0,
         }}>
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -75,15 +73,15 @@ export function Sidebar() {
             <SectionTitle text="Selection" />
             <div className="tooltip-grid" style={{ marginBottom: 10 }}>
               {SELECTION_TOOLS.map((t) => (
-                <span
-                  key={t.tool}
-                  className={`tooltip-item ${activeTool === t.tool ? 'tooltip-item-active' : ''}`}
-                  onClick={() => setActiveTool(t.tool)}
-                  style={{ cursor: 'pointer' }}
-                  title={t.label}
-                >
-                  {t.icon}
-                </span>
+                <Tooltip key={t.tool} content={t.label}>
+                  <span
+                    className={`tooltip-item ${activeTool === t.tool ? 'tooltip-item-active' : ''}`}
+                    onClick={() => setActiveTool(t.tool)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {t.icon}
+                  </span>
+                </Tooltip>
               ))}
             </div>
 
@@ -91,15 +89,15 @@ export function Sidebar() {
             <SectionTitle text="Connection" />
             <div className="tooltip-grid" style={{ marginBottom: 10 }}>
               {FLOW_DIRECTIONS.map((f) => (
-                <span
-                  key={f.dir}
-                  className={`tooltip-item ${flowDirection === f.dir ? 'tooltip-item-active' : ''}`}
-                  onClick={() => setFlowDirection(f.dir)}
-                  style={{ cursor: 'pointer' }}
-                  title={f.label}
-                >
-                  {f.icon}
-                </span>
+                <Tooltip key={f.dir} content={f.label}>
+                  <span
+                    className={`tooltip-item ${flowDirection === f.dir ? 'tooltip-item-active' : ''}`}
+                    onClick={() => setFlowDirection(f.dir)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {f.icon}
+                  </span>
+                </Tooltip>
               ))}
             </div>
 
@@ -112,15 +110,15 @@ export function Sidebar() {
                   <SectionTitle text={cat.label} icon={cat.icon} />
                   <div className="tooltip-grid" style={{ marginBottom: 10 }}>
                     {types.map((def) => (
-                      <span
-                        key={def.type}
-                        className="tooltip-item"
-                        draggable
-                        onDragStart={(e) => onDragStart(e, def.type)}
-                        title={def.label}
-                      >
-                        {def.icon}
-                      </span>
+                      <Tooltip key={def.type} content={def.label}>
+                        <span
+                          className="tooltip-item"
+                          draggable
+                          onDragStart={(e) => onDragStart(e, def.type)}
+                        >
+                          {def.icon}
+                        </span>
+                      </Tooltip>
                     ))}
                   </div>
                 </div>

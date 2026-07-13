@@ -79,30 +79,32 @@ export function ReviewPanel() {
     const nodesList = Array.isArray(createResult.proposedNodes) ? createResult.proposedNodes : []
     const edgesList = Array.isArray(createResult.proposedEdges) ? createResult.proposedEdges : []
     console.log('[Create] render:', { nodes: nodesList.length, edges: edgesList.length, sampleNode: nodesList[0] })
-    const handleAcceptAll = () => {
-      const newNodes = nodesList.map((pn: any, i: number) => ({
-        id: pn.id || `node-${Date.now()}-${i}`,
-        type: pn.type,
-        position: pn.position || { x: 100 + i * 220, y: 100 + (i % 3) * 120 },
-        config: (pn.config || {}) as Record<string, unknown>,
-        label: pn.label,
-      }))
-      const newEdges = edgesList.map((pe: any, i: number) => ({
-        id: `edge-${Date.now()}-${i}`,
-        source: pe.source,
-        target: pe.target,
-        label: pe.label,
-      }))
-      setNodes(newNodes)
-      setEdges(newEdges)
-      setReviewOpen(false)
-      addChatMessage({
-        id: `msg-${Date.now()}`,
-        userId: 'system', displayName: 'System',
-        content: `Accepted new architecture with ${newNodes.length} nodes and ${newEdges.length} connections`,
-        timestamp: new Date().toISOString(), type: 'user',
-      })
-    }
+      const handleAcceptAll = () => {
+        const newNodes = nodesList.map((pn: any, i: number) => ({
+          id: pn.id || `node-${Date.now()}-${i}`,
+          type: pn.type,
+          position: pn.position || { x: 100 + i * 220, y: 100 + (i % 3) * 120 },
+          config: (pn.config || {}) as Record<string, unknown>,
+          label: pn.label,
+          description: pn.description,
+        }))
+        const newEdges = edgesList.map((pe: any, i: number) => ({
+          id: `edge-${Date.now()}-${i}`,
+          source: pe.source,
+          target: pe.target,
+          label: pe.label,
+          description: pe.description,
+        }))
+        setNodes(newNodes)
+        setEdges(newEdges)
+        setReviewOpen(false)
+        addChatMessage({
+          id: `msg-${Date.now()}`,
+          userId: 'system', displayName: 'System',
+          content: `Accepted new architecture with ${newNodes.length} nodes and ${newEdges.length} connections`,
+          timestamp: new Date().toISOString(), type: 'user',
+        })
+      }
 
     return (
       <div className="review-overlay" onClick={() => setReviewOpen(false)}>

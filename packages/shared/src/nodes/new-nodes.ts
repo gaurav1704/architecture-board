@@ -1,4 +1,5 @@
 import type { NodeTypeDefinition, NodeConfig } from './base.js'
+import { capacityPlanningDefault, capacityPlanningFields } from './capacity.js'
 
 // ── MySQL ──
 
@@ -9,10 +10,12 @@ export const mysqlDefinition: NodeTypeDefinition = {
   icon: '🐬',
   category: 'databases',
   ports: [{ id: 'in', label: 'In', type: 'input' }, { id: 'out', label: 'Out', type: 'output' }],
-  defaultConfig: { version: '8.0', storage: 100 },
+  defaultConfig: { version: '8.0', storage: 100, readReplicas: 0, capacityPlanning: { ...capacityPlanningDefault, instanceCount: 1, scalingMode: 'fixed', minInstances: 1, maxInstances: 5, instanceType: 'r6i.large' } },
   configFields: [
     { key: 'version', label: 'Version', type: 'text', defaultValue: '8.0' },
     { key: 'storage', label: 'Storage (GB)', type: 'number', defaultValue: 100 },
+    { key: 'readReplicas', label: 'Read Replicas', type: 'number', defaultValue: 0 },
+    capacityPlanningFields,
   ],
 }
 
@@ -61,10 +64,11 @@ export const proxyDefinition: NodeTypeDefinition = {
   icon: '🔄',
   category: 'network',
   ports: [{ id: 'in', label: 'In', type: 'input' }, { id: 'out', label: 'Out', type: 'output' }],
-  defaultConfig: { targetUrl: '', protocol: 'HTTP' },
+  defaultConfig: { targetUrl: '', protocol: 'HTTP', capacityPlanning: { ...capacityPlanningDefault, instanceCount: 2, scalingMode: 'auto', minInstances: 1, maxInstances: 8, instanceType: 't3.small' } },
   configFields: [
     { key: 'targetUrl', label: 'Target URL', type: 'text' },
     { key: 'protocol', label: 'Protocol', type: 'select', options: [{ label: 'HTTP', value: 'HTTP' }, { label: 'HTTPS', value: 'HTTPS' }, { label: 'SOCKS5', value: 'SOCKS5' }] },
+    capacityPlanningFields,
   ],
 }
 
@@ -77,10 +81,11 @@ export const reverseProxyDefinition: NodeTypeDefinition = {
   icon: '🔁',
   category: 'network',
   ports: [{ id: 'in', label: 'In', type: 'input' }, { id: 'out', label: 'Out', type: 'output' }],
-  defaultConfig: { upstreams: [], sslTermination: true },
+  defaultConfig: { upstreams: [], sslTermination: true, capacityPlanning: { ...capacityPlanningDefault, instanceCount: 2, scalingMode: 'auto', minInstances: 1, maxInstances: 8, instanceType: 't3.small' } },
   configFields: [
     { key: 'upstreams', label: 'Upstream Servers', type: 'array', fields: [{ key: 'host', label: 'Host', type: 'text' }, { key: 'port', label: 'Port', type: 'number' }] },
     { key: 'sslTermination', label: 'SSL Termination', type: 'boolean', defaultValue: true },
+    capacityPlanningFields,
   ],
 }
 
@@ -282,11 +287,12 @@ export const elasticsearchDefinition: NodeTypeDefinition = {
   icon: '🔍',
   category: 'components',
   ports: [{ id: 'in', label: 'In', type: 'input' }, { id: 'out', label: 'Out', type: 'output' }],
-  defaultConfig: { version: '8.x', shards: 3, replicas: 1 },
+  defaultConfig: { version: '8.x', shards: 3, replicas: 1, capacityPlanning: { ...capacityPlanningDefault, instanceCount: 3, scalingMode: 'fixed', minInstances: 1, maxInstances: 10, instanceType: 'i3.2xlarge' } },
   configFields: [
     { key: 'version', label: 'Version', type: 'text', defaultValue: '8.x' },
     { key: 'shards', label: 'Shards', type: 'number', defaultValue: 3 },
     { key: 'replicas', label: 'Replicas', type: 'number', defaultValue: 1 },
+    capacityPlanningFields,
   ],
 }
 
@@ -377,9 +383,384 @@ export const rabbitMqDefinition: NodeTypeDefinition = {
   icon: '🐇',
   category: 'messaging-queues',
   ports: [{ id: 'in', label: 'In', type: 'input' }, { id: 'out', label: 'Out', type: 'output' }],
-  defaultConfig: { version: '3.13', vhosts: ['/'] },
+  defaultConfig: { version: '3.13', vhosts: ['/'], capacityPlanning: { ...capacityPlanningDefault, instanceCount: 3, scalingMode: 'fixed', instanceType: 'm5.large' } },
   configFields: [
     { key: 'version', label: 'Version', type: 'text', defaultValue: '3.13' },
     { key: 'vhosts', label: 'Virtual Hosts', type: 'array', fields: [{ key: 'name', label: 'Name', type: 'text' }] },
+    capacityPlanningFields,
+  ],
+}
+
+// ── Cassandra ──
+
+export const cassandraDefinition: NodeTypeDefinition = {
+  type: 'cassandra',
+  label: 'Cassandra',
+  color: '#1286b7',
+  icon: '🌐',
+  category: 'databases',
+  ports: [{ id: 'in', label: 'In', type: 'input' }, { id: 'out', label: 'Out', type: 'output' }],
+  defaultConfig: {
+    version: '4.1',
+    replicationFactor: 3,
+    consistency: 'LOCAL_QUORUM',
+    datacenters: 1,
+    capacityPlanning: { ...capacityPlanningDefault, instanceCount: 3, scalingMode: 'fixed', minInstances: 3, maxInstances: 12, instanceType: 'i3.2xlarge' },
+  },
+  configFields: [
+    { key: 'version', label: 'Version', type: 'text', defaultValue: '4.1' },
+    { key: 'replicationFactor', label: 'Replication Factor', type: 'number', defaultValue: 3 },
+    {
+      key: 'consistency',
+      label: 'Consistency Level',
+      type: 'select',
+      options: [
+        { label: 'ONE', value: 'ONE' },
+        { label: 'TWO', value: 'TWO' },
+        { label: 'THREE', value: 'THREE' },
+        { label: 'QUORUM', value: 'QUORUM' },
+        { label: 'LOCAL_QUORUM', value: 'LOCAL_QUORUM' },
+        { label: 'ALL', value: 'ALL' },
+      ],
+    },
+    { key: 'datacenters', label: 'Datacenters', type: 'number', defaultValue: 1 },
+    capacityPlanningFields,
+  ],
+}
+
+// ── ScyllaDB ──
+
+export const scyllaDbDefinition: NodeTypeDefinition = {
+  type: 'scylladb',
+  label: 'ScyllaDB',
+  color: '#8a2be2',
+  icon: '🦂',
+  category: 'databases',
+  ports: [{ id: 'in', label: 'In', type: 'input' }, { id: 'out', label: 'Out', type: 'output' }],
+  defaultConfig: {
+    version: '5.4',
+    replicationFactor: 3,
+    consistency: 'LOCAL_QUORUM',
+    capacityPlanning: { ...capacityPlanningDefault, instanceCount: 3, scalingMode: 'fixed', minInstances: 3, maxInstances: 12, instanceType: 'i3.2xlarge' },
+  },
+  configFields: [
+    { key: 'version', label: 'Version', type: 'text', defaultValue: '5.4' },
+    { key: 'replicationFactor', label: 'Replication Factor', type: 'number', defaultValue: 3 },
+    {
+      key: 'consistency',
+      label: 'Consistency Level',
+      type: 'select',
+      options: [
+        { label: 'ONE', value: 'ONE' },
+        { label: 'QUORUM', value: 'QUORUM' },
+        { label: 'LOCAL_QUORUM', value: 'LOCAL_QUORUM' },
+        { label: 'ALL', value: 'ALL' },
+      ],
+    },
+    capacityPlanningFields,
+  ],
+}
+
+// ── DynamoDB ──
+
+export const dynamoDbDefinition: NodeTypeDefinition = {
+  type: 'dynamodb',
+  label: 'DynamoDB',
+  color: '#4053d6',
+  icon: '💎',
+  category: 'databases',
+  ports: [{ id: 'in', label: 'In', type: 'input' }, { id: 'out', label: 'Out', type: 'output' }],
+  defaultConfig: {
+    billingMode: 'on-demand',
+    readCapacity: 0,
+    writeCapacity: 0,
+    globalSecondaryIndexes: [],
+    pointInTimeRecovery: true,
+  },
+  configFields: [
+    {
+      key: 'billingMode',
+      label: 'Billing Mode',
+      type: 'select',
+      options: [
+        { label: 'On-Demand', value: 'on-demand' },
+        { label: 'Provisioned', value: 'provisioned' },
+      ],
+    },
+    { key: 'readCapacity', label: 'Read Capacity Units (RCU)', type: 'number', defaultValue: 0, description: 'Only for provisioned mode' },
+    { key: 'writeCapacity', label: 'Write Capacity Units (WCU)', type: 'number', defaultValue: 0, description: 'Only for provisioned mode' },
+    {
+      key: 'globalSecondaryIndexes',
+      label: 'Global Secondary Indexes',
+      type: 'array',
+      fields: [
+        { key: 'name', label: 'Index Name', type: 'text', required: true, placeholder: 'email-index' },
+        { key: 'partitionKey', label: 'Partition Key', type: 'text', required: true, placeholder: 'email' },
+        { key: 'sortKey', label: 'Sort Key', type: 'text', placeholder: 'createdAt' },
+      ],
+    },
+    { key: 'pointInTimeRecovery', label: 'Point-in-Time Recovery', type: 'boolean', defaultValue: true },
+  ],
+}
+
+// ── MariaDB ──
+
+export const mariaDbDefinition: NodeTypeDefinition = {
+  type: 'mariadb',
+  label: 'MariaDB',
+  color: '#003545',
+  icon: '🏛️',
+  category: 'databases',
+  ports: [{ id: 'in', label: 'In', type: 'input' }, { id: 'out', label: 'Out', type: 'output' }],
+  defaultConfig: { version: '11.4', storage: 100, readReplicas: 0 },
+  configFields: [
+    { key: 'version', label: 'Version', type: 'text', defaultValue: '11.4' },
+    { key: 'storage', label: 'Storage (GB)', type: 'number', defaultValue: 100 },
+    { key: 'readReplicas', label: 'Read Replicas', type: 'number', defaultValue: 0, description: 'Number of read replica instances' },
+  ],
+}
+
+// ── MS SQL Server ──
+
+export const msSqlDefinition: NodeTypeDefinition = {
+  type: 'mssql',
+  label: 'MS SQL Server',
+  color: '#cc2927',
+  icon: '🟦',
+  category: 'databases',
+  ports: [{ id: 'in', label: 'In', type: 'input' }, { id: 'out', label: 'Out', type: 'output' }],
+  defaultConfig: { version: '2022', edition: 'standard', storage: 100, readReplicas: 0 },
+  configFields: [
+    { key: 'version', label: 'Version', type: 'text', defaultValue: '2022' },
+    {
+      key: 'edition',
+      label: 'Edition',
+      type: 'select',
+      options: [
+        { label: 'Express (Free)', value: 'express' },
+        { label: 'Standard', value: 'standard' },
+        { label: 'Enterprise', value: 'enterprise' },
+        { label: 'Web', value: 'web' },
+      ],
+    },
+    { key: 'storage', label: 'Storage (GB)', type: 'number', defaultValue: 100 },
+    { key: 'readReplicas', label: 'Read Replicas', type: 'number', defaultValue: 0 },
+    {
+      key: 'availabilityGroups',
+      label: 'Availability Groups',
+      type: 'array',
+      fields: [
+        { key: 'name', label: 'AG Name', type: 'text', required: true, placeholder: 'ag-prod' },
+        { key: 'replicas', label: 'Replica Count', type: 'number', defaultValue: 2 },
+      ],
+    },
+  ],
+}
+
+// ── Oracle DB ──
+
+export const oracleDbDefinition: NodeTypeDefinition = {
+  type: 'oracle-db',
+  label: 'Oracle DB',
+  color: '#ff0000',
+  icon: '🔶',
+  category: 'databases',
+  ports: [{ id: 'in', label: 'In', type: 'input' }, { id: 'out', label: 'Out', type: 'output' }],
+  defaultConfig: { version: '19c', edition: 'enterprise', storage: 200, readReplicas: 0 },
+  configFields: [
+    { key: 'version', label: 'Version', type: 'text', defaultValue: '19c' },
+    {
+      key: 'edition',
+      label: 'Edition',
+      type: 'select',
+      options: [
+        { label: 'Express Edition (Free)', value: 'express' },
+        { label: 'Standard Edition', value: 'standard' },
+        { label: 'Enterprise Edition', value: 'enterprise' },
+      ],
+    },
+    { key: 'storage', label: 'Storage (GB)', type: 'number', defaultValue: 200 },
+    { key: 'readReplicas', label: 'Read Replicas', type: 'number', defaultValue: 0 },
+    {
+      key: 'rac',
+      label: 'RAC (Real Application Clusters)',
+      type: 'group',
+      fields: [
+        { key: 'enabled', label: 'RAC Enabled', type: 'boolean', defaultValue: false },
+        { key: 'nodes', label: 'RAC Nodes', type: 'number', defaultValue: 2 },
+      ],
+    },
+  ],
+}
+
+// ── Snowflake ──
+
+export const snowflakeDefinition: NodeTypeDefinition = {
+  type: 'snowflake',
+  label: 'Snowflake',
+  color: '#56b9f2',
+  icon: '❄️',
+  category: 'databases',
+  ports: [{ id: 'in', label: 'In', type: 'input' }, { id: 'out', label: 'Out', type: 'output' }],
+  defaultConfig: {
+    warehouseSize: 'medium',
+    autoSuspend: 60,
+    autoResume: true,
+    maxClusterCount: 1,
+    minClusterCount: 1,
+  },
+  configFields: [
+    {
+      key: 'warehouseSize',
+      label: 'Warehouse Size',
+      type: 'select',
+      options: [
+        { label: 'X-Small', value: 'xsmall' },
+        { label: 'Small', value: 'small' },
+        { label: 'Medium', value: 'medium' },
+        { label: 'Large', value: 'large' },
+        { label: 'X-Large', value: 'xlarge' },
+        { label: '2X-Large', value: '2xlarge' },
+        { label: '3X-Large', value: '3xlarge' },
+        { label: '4X-Large', value: '4xlarge' },
+      ],
+    },
+    { key: 'autoSuspend', label: 'Auto Suspend (seconds)', type: 'number', defaultValue: 60 },
+    { key: 'autoResume', label: 'Auto Resume', type: 'boolean', defaultValue: true },
+    { key: 'minClusterCount', label: 'Min Multi-Cluster Count', type: 'number', defaultValue: 1 },
+    { key: 'maxClusterCount', label: 'Max Multi-Cluster Count', type: 'number', defaultValue: 1, description: 'For multi-cluster warehouses (auto-scaling)' },
+  ],
+}
+
+// ── BigQuery ──
+
+export const bigQueryDefinition: NodeTypeDefinition = {
+  type: 'bigquery',
+  label: 'BigQuery',
+  color: '#4285f4',
+  icon: '📊',
+  category: 'databases',
+  ports: [{ id: 'in', label: 'In', type: 'input' }, { id: 'out', label: 'Out', type: 'output' }],
+  defaultConfig: {
+    location: 'us-central1',
+    billingModel: 'on-demand',
+    maxSlots: 0,
+    partitionExpiry: 0,
+  },
+  configFields: [
+    { key: 'location', label: 'Location', type: 'text', defaultValue: 'us-central1' },
+    {
+      key: 'billingModel',
+      label: 'Billing Model',
+      type: 'select',
+      options: [
+        { label: 'On-Demand (per TB)', value: 'on-demand' },
+        { label: 'Flat-Rate (Slots)', value: 'flat-rate' },
+      ],
+    },
+    { key: 'maxSlots', label: 'Max Slots (flat-rate)', type: 'number', defaultValue: 0, description: '0 = on-demand' },
+    { key: 'partitionExpiry', label: 'Partition Expiry (ms)', type: 'number', defaultValue: 0, description: '0 = no expiry' },
+  ],
+}
+
+// ── TimescaleDB ──
+
+export const timescaleDbDefinition: NodeTypeDefinition = {
+  type: 'timescaledb',
+  label: 'TimescaleDB',
+  color: '#f05d21',
+  icon: '⏰',
+  category: 'databases',
+  ports: [{ id: 'in', label: 'In', type: 'input' }, { id: 'out', label: 'Out', type: 'output' }],
+  defaultConfig: {
+    version: '2.14',
+    postgresVersion: '16',
+    storage: 100,
+    chunkInterval: '7d',
+    retentionPolicy: '90d',
+    capacityPlanning: { ...capacityPlanningDefault, instanceCount: 1, scalingMode: 'fixed', maxInstances: 4, instanceType: 'r6i.2xlarge' },
+  },
+  configFields: [
+    { key: 'version', label: 'TimescaleDB Version', type: 'text', defaultValue: '2.14' },
+    { key: 'postgresVersion', label: 'PostgreSQL Version', type: 'text', defaultValue: '16' },
+    { key: 'storage', label: 'Storage (GB)', type: 'number', defaultValue: 100 },
+    { key: 'chunkInterval', label: 'Chunk Interval', type: 'text', defaultValue: '7d', placeholder: '7d / 1d / 1h' },
+    { key: 'retentionPolicy', label: 'Retention Policy', type: 'text', defaultValue: '90d', placeholder: '90d / 30d' },
+    capacityPlanningFields,
+  ],
+}
+
+// ── InfluxDB ──
+
+export const influxDbDefinition: NodeTypeDefinition = {
+  type: 'influxdb',
+  label: 'InfluxDB',
+  color: '#22adf6',
+  icon: '📈',
+  category: 'databases',
+  ports: [{ id: 'in', label: 'In', type: 'input' }, { id: 'out', label: 'Out', type: 'output' }],
+  defaultConfig: {
+    version: '2.7',
+    edition: 'oss',
+    retention: '30d',
+    shardDuration: '1d',
+    capacityPlanning: { ...capacityPlanningDefault, instanceCount: 1, scalingMode: 'fixed', maxInstances: 3, instanceType: 'm5.large' },
+  },
+  configFields: [
+    { key: 'version', label: 'Version', type: 'text', defaultValue: '2.7' },
+    {
+      key: 'edition',
+      label: 'Edition',
+      type: 'select',
+      options: [
+        { label: 'Open Source (OSS)', value: 'oss' },
+        { label: 'Cloud (Serverless)', value: 'cloud' },
+        { label: 'Enterprise', value: 'enterprise' },
+      ],
+    },
+    { key: 'retention', label: 'Retention Policy', type: 'text', defaultValue: '30d' },
+    { key: 'shardDuration', label: 'Shard Duration', type: 'text', defaultValue: '1d' },
+    capacityPlanningFields,
+  ],
+}
+
+// ── Neo4j ──
+
+export const neo4jDefinition: NodeTypeDefinition = {
+  type: 'neo4j',
+  label: 'Neo4j',
+  color: '#008cc1',
+  icon: '🔗',
+  category: 'databases',
+  ports: [{ id: 'in', label: 'In', type: 'input' }, { id: 'out', label: 'Out', type: 'output' }],
+  defaultConfig: {
+    version: '5.20',
+    edition: 'community',
+    storage: 50,
+    capacityPlanning: { ...capacityPlanningDefault, instanceCount: 1, scalingMode: 'fixed', minInstances: 1, maxInstances: 5, instanceType: 'm5.large' },
+  },
+  configFields: [
+    { key: 'version', label: 'Version', type: 'text', defaultValue: '5.20' },
+    {
+      key: 'edition',
+      label: 'Edition',
+      type: 'select',
+      options: [
+        { label: 'Community (Free)', value: 'community' },
+        { label: 'Enterprise', value: 'enterprise' },
+      ],
+    },
+    { key: 'storage', label: 'Storage (GB)', type: 'number', defaultValue: 50 },
+    {
+      key: 'cluster',
+      label: 'Causal Cluster',
+      type: 'group',
+      fields: [
+        { key: 'enabled', label: 'Cluster Enabled', type: 'boolean', defaultValue: false },
+        { key: 'coreServers', label: 'Core Servers', type: 'number', defaultValue: 3 },
+        { key: 'readReplicas', label: 'Read Replicas', type: 'number', defaultValue: 0 },
+      ],
+    },
+    capacityPlanningFields,
   ],
 }

@@ -24,7 +24,7 @@ boardRouter.post('/', (req, res) => {
     edges: [],
     groups: [],
     problemStatement: '',
-    notes: { functional: '', nonFunctional: '', calculations: '' },
+    notes: { functional: '', nonFunctional: '', calculations: '', architecture: '' },
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ownerId: req.body.ownerId || 'anonymous',

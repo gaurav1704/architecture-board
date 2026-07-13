@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { getBoard } from '../models/store.js'
+import { computeLayout, getAllNodeTypes } from '@board/shared'
 import type { AiReviewResult, AiModifyResult, AiCreateResult } from '@board/shared'
 
 
@@ -42,136 +43,6 @@ aiRouter.post('/generate-hld', async (_req, res) => {
   res.json(HLD_QUESTIONS[idx])
 })
 
-const LAYER_ORDER: Record<string, number> = {
-  'load-balancer': 0, 'mesh-lb': 0, 'reverse-proxy': 0,
-  'application-server': 1, 'kubernetes-cluster': 1,
-  'caching': 2, 'in-memory-cache': 2,
-  'messaging-queue': 3, 'rabbitmq': 3,
-  'database': 4, 'mysql': 4, 'elasticsearch': 4,
-  'vpc': 0, 'vpc-peering': 0, 'transit-gateway': 0, 'proxy': 0,
-  'prometheus': 5, 'grafana': 5, 'kibana': 5, 's3': 5, 'gcs': 5, 'external-system': 5,
-}
-
-function computeLayout(proposedNodes: any[], proposedEdges: any[], direction: 'TB' | 'LR' = 'TB', aiLayer?: Record<string, number>) {
-  const NODE_W = 180, NODE_H = 80, PAD = 60
-  const isLR = direction === 'LR'
-  const nodeMap = new Map(proposedNodes.map((n: any) => [n.id, n]))
-
-  const layerOf = new Map<string, number>()
-  if (aiLayer) {
-    for (const n of proposedNodes) layerOf.set(n.id, aiLayer[n.id] ?? 0)
-  } else {
-    // Find roots: nodes not targeted by any edge
-    const targets = new Set(proposedEdges.map((e: any) => e.target))
-    const roots = proposedNodes.filter((n: any) => !targets.has(n.id))
-    const remaining = new Set(proposedNodes.map((n: any) => n.id))
-
-    const queue: { id: string; depth: number }[] = roots.map((r: any) => ({ id: r.id, depth: 0 }))
-    for (const r of roots) { layerOf.set(r.id, 0); remaining.delete(r.id) }
-
-    const childrenOf = new Map<string, string[]>()
-    for (const e of proposedEdges) {
-      if (!childrenOf.has(e.source)) childrenOf.set(e.source, [])
-      childrenOf.get(e.source)!.push(e.target)
-    }
-
-    while (queue.length > 0) {
-      const { id, depth } = queue.shift()!
-      for (const child of childrenOf.get(id) || []) {
-        const newDepth = depth + 1
-        if (!layerOf.has(child) || layerOf.get(child)! < newDepth) {
-          layerOf.set(child, newDepth)
-          remaining.delete(child)
-        }
-        if (!queue.find((q) => q.id === child)) {
-          queue.push({ id: child, depth: newDepth })
-        }
-      }
-    }
-
-    for (const id of remaining) {
-      if (!layerOf.has(id)) layerOf.set(id, 0)
-    }
-  }
-
-  // Build parents map
-  const parents = new Map<string, string[]>()
-  for (const e of proposedEdges) {
-    if (!parents.has(e.target)) parents.set(e.target, [])
-    parents.get(e.target)!.push(e.source)
-  }
-
-  // Group nodes by layer
-  const layers = new Map<number, any[]>()
-  for (const n of proposedNodes) {
-    const l = layerOf.get(n.id) ?? 0
-    if (!layers.has(l)) layers.set(l, [])
-    layers.get(l)!.push(n)
-  }
-  const sortedLayers = Array.from(layers.entries()).sort((a, b) => a[0] - b[0])
-
-  // Sort within each layer by parent position (barycenter heuristic)
-  for (let li = 0; li < sortedLayers.length; li++) {
-    const [layerNum, layerNodes] = sortedLayers[li]
-    sortedLayers[li][1] = layerNodes.sort((a: any, b: any) => {
-      const aParents = parents.get(a.id) || []
-      const bParents = parents.get(b.id) || []
-      const aAvg = avgParentIndex(aParents, layers, layerOf)
-      const bAvg = avgParentIndex(bParents, layers, layerOf)
-      return aAvg - bAvg
-    })
-  }
-
-  function avgParentIndex(parentIds: string[], layerMap: Map<number, any[]>, layerMap2: Map<string, number>): number {
-    if (parentIds.length === 0) return 0
-    let sum = 0, count = 0
-    for (const pid of parentIds) {
-      const pl = layerMap2.get(pid) ?? 0
-      const pn = layerMap.get(pl)
-      if (pn) {
-        const idx = pn.findIndex((x: any) => x.id === pid)
-        if (idx >= 0) { sum += idx; count++ }
-      }
-    }
-    return count > 0 ? sum / count : 0
-  }
-
-  // Dynamic spacing: gap scales with max nodes across layers
-  const maxNodesPerLayer = Math.max(...sortedLayers.map(([, ln]) => ln.length), 1)
-  const H_GAP = isLR ? 60 : Math.max(40, Math.min(100, 400 / maxNodesPerLayer))
-  const V_GAP = isLR ? Math.max(40, Math.min(100, 400 / maxNodesPerLayer)) : 50
-
-  // Calculate max span for centering
-  let maxSpan = 0
-  for (const [, nodes] of sortedLayers) {
-    const span = nodes.length * (isLR ? NODE_H + V_GAP : NODE_W + H_GAP) - (isLR ? V_GAP : H_GAP)
-    if (span > maxSpan) maxSpan = span
-  }
-
-  const resultNodes: any[] = []
-  for (const [layerIdx, nodes] of sortedLayers) {
-    const count = nodes.length
-    if (isLR) {
-      const x = PAD + layerIdx * (NODE_W + H_GAP)
-      const colH = count * (NODE_H + V_GAP) - V_GAP
-      const startY = PAD + (maxSpan - colH) / 2
-      for (let i = 0; i < count; i++) {
-        resultNodes.push({ ...nodes[i], position: { x, y: startY + i * (NODE_H + V_GAP) } })
-      }
-    } else {
-      const y = PAD + layerIdx * (NODE_H + V_GAP)
-      const rowW = count * (NODE_W + H_GAP) - H_GAP
-      const startX = PAD + (maxSpan - rowW) / 2
-      for (let i = 0; i < count; i++) {
-        resultNodes.push({ ...nodes[i], position: { x: startX + i * (NODE_W + H_GAP), y } })
-      }
-    }
-  }
-
-  const resultEdges = proposedEdges.map((e: any, i: number) => ({ id: `edge-${Date.now()}-${i}`, source: e.source, target: e.target, label: e.label }))
-  return { nodes: resultNodes, edges: resultEdges }
-}
-
 // ── Helpers ──
 
 function serializeBoardGraph(board: { name: string; problemStatement?: string; notes?: any; nodes: any[]; edges: any[]; groups?: any[] }): string {
@@ -181,16 +52,21 @@ function serializeBoardGraph(board: { name: string; problemStatement?: string; n
     if (board.notes.functional) { parts.push('\n## Functional Requirements'); parts.push(board.notes.functional) }
     if (board.notes.nonFunctional) { parts.push('\n## Non-Functional Requirements'); parts.push(board.notes.nonFunctional) }
     if (board.notes.calculations) { parts.push('\n## Capacity Planning'); parts.push(board.notes.calculations) }
+    if (board.notes.architecture) { parts.push('\n## Architecture Description'); parts.push(board.notes.architecture) }
   }
   parts.push('\n## Nodes')
   for (const n of board.nodes) {
-    parts.push(`\nNode "${n.label || n.id}" (${n.id})\n  Type: ${n.type}\n  Config: ${JSON.stringify(n.config, null, 2)}`)
+    const parts2: string[] = [`\nNode "${n.label || n.id}" (${n.id})`, `  Type: ${n.type}`]
+    if (n.description) parts2.push(`  Description: ${n.description}`)
+    parts2.push(`  Config: ${JSON.stringify(n.config, null, 2)}`)
+    parts.push(parts2.join('\n'))
   }
   parts.push('\n## Connections')
   for (const e of board.edges) {
     const src = board.nodes.find((n) => n.id === e.source)
     const tgt = board.nodes.find((n) => n.id === e.target)
-    parts.push(`  ${src?.label || e.source} → ${tgt?.label || e.target}`)
+    const desc = e.description ? ` — ${e.description}` : ''
+    parts.push(`  ${src?.label || e.source} → ${tgt?.label || e.target}${e.label ? ` (${e.label})` : ''}${desc}`)
   }
   if (board.groups?.length) {
     parts.push('\n## Groups')
@@ -202,12 +78,76 @@ function serializeBoardGraph(board: { name: string; problemStatement?: string; n
   return parts.join('\n')
 }
 
+function buildAvailableTypesList(): string {
+  const all = getAllNodeTypes()
+  const lines: string[] = []
+  for (const def of all) {
+    const fields = def.configFields.map((f) => f.key).join(', ')
+    lines.push(`  - "${def.type}" (${def.label}, category: ${def.category}): config keys = { ${fields} }`)
+  }
+  return lines.join('\n')
+}
+
 function buildSystemPrompt(mode: string): string {
   const base = 'You are an expert system architecture assistant. Respond with valid JSON only, no markdown or surrounding text.'
-  if (mode === 'create') return `${base}\n\nGiven the current architecture context below, design a COMPLETE new architecture. Return a JSON object with:\n{\n  "explanation": "summary",\n  "proposedNodes": [{ "id": "uid", "type": "load-balancer|database|application-server|caching|messaging-queue|external-system|vpc|vpc-peering", "label": "Name", "config": { ... } }],\n  "proposedEdges": [{ "source": "id", "target": "id", "label": "desc" }],\n  "suggestedNotes": { "functional": "...", "nonFunctional": "...", "calculations": "..." },\n  "layout": { "nodeId1": 0, "nodeId2": 1, "nodeId3": 1, "nodeId4": 2, ... }\n}\nThe "layout" field maps each node ID to its layer number. Layer 0 = root (where traffic first enters, e.g. load balancers, API gateways). Layer 1 = immediate downstream (app servers that receive from layer 0). Layer 2 = databases, caches, queues that layer 1 nodes connect to. Keep the hierarchy as flat as possible. Use EXISTING nodes as reference but add/remove/restructure freely. Populate config fields meaningfully.`
-  if (mode === 'review') return `${base}\n\nGiven the architecture below, evaluate it. Return:\n{\n  "answer": "detailed analysis",\n  "score": 0-100,\n  "strengths": [...],\n  "weaknesses": [...],\n  "suggestions": [...],\n  "suggestedNotes": { "functional": "...", "nonFunctional": "...", "calculations": "..." }\n}\nBe specific — reference actual node names. Score on scalability, reliability, security, cost, completeness.`
-  return `${base}\n\nGiven the architecture below, enhance it by fixing missing metadata. Return:\n{\n  "explanation": "summary",\n  "proposedChanges": [{ "nodeId": "id", "nodeLabel": "Name", "summary": "what changed", "oldConfig": {}, "newConfig": {} }],\n  "suggestedNotes": { "functional": "...", "nonFunctional": "...", "calculations": "..." }\n}\nFill in: database→tables, server→routes, lb→rules, cache→settings, queue→topics, vpc→cidr. Only include nodes needing changes.`
+  const archDescInstruction = '\n\nInclude "architectureDescription": a coherent narrative (2-4 paragraphs) explaining the overall architectural decisions: why each major component was chosen, how data/request flows through the system, what trade-offs were made, and how functional/non-functional requirements and scale are addressed.'
+  const configInstruction = '\n\nIMPORTANT: For every node in proposedNodes (or newConfig in proposedChanges), populate ALL relevant config fields meaningfully based on the node type. This includes:\n- Database nodes: engine, version, storage, tables with columns/indexes, relations, capacityPlanning (instanceCount, scalingMode, minInstances, maxInstances, instanceType, cpuThreshold, memoryThreshold, capacityNotes)\n- Application Server nodes: role, port, routes (with path, method, contentType, requestSchema, responseSchema), envVars, capacityPlanning with HPA settings\n- Load Balancer nodes: type, autoscaling settings, routes, capacityPlanning\n- Cache nodes: engine, version, useCases, maxMemory, evictionPolicy, persistence, capacityPlanning\n- Messaging Queue nodes: engine, brokers, topics with partitions/replication, capacityPlanning\n- Security nodes (firewall, key-vault, kms, secret-manager): rules, policies, accessPolicies, keySpec\n- Network nodes (cdn, dns-resolver, proxy, reverse-proxy): provider, caching, routes, capacityPlanning\n- For horizontally scalable components, set capacityPlanning with appropriate instanceCount based on expected load. Use scalingMode "auto" with min/max instances and CPU/memory thresholds for auto-scaling, or "fixed" with a specific instanceCount. Always fill capacityNotes with the rationale for the instance count based on capacity planning calculations.'
+  const availableTypes = `\n\nAvailable node types and their config keys:\n${buildAvailableTypesList()}`
+
+  if (mode === 'create') return `${base}\n\nGiven the current architecture context below, design a COMPLETE new architecture. Return a JSON object with:\n{\n  "explanation": "brief summary of the design",\n  "architectureDescription": "detailed narrative explaining component choices, data/request flow, trade-offs, and how requirements/scale are met",\n  "proposedNodes": [{ "id": "uid", "type": "one of the available node types", "label": "Name", "description": "why this component is needed and what it does", "config": { ... all relevant config fields including capacityPlanning ... } }],\n  "proposedEdges": [{ "source": "id", "target": "id", "label": "desc", "description": "why this connection exists and what traffic/data flows here" }],\n  "suggestedNotes": { "functional": "...", "nonFunctional": "...", "calculations": "...", "architecture": "same as architectureDescription or a concise version" },\n  "layout": { "nodeId1": 0, "nodeId2": 1, "nodeId3": 1, "nodeId4": 2, ... }\n}\nThe "layout" field maps each node ID to its layer number. Layer 0 = root (where traffic first enters, e.g. load balancers, API gateways). Layer 1 = immediate downstream (app servers that receive from layer 0). Layer 2 = databases, caches, queues that layer 1 nodes connect to. Keep the hierarchy as flat as possible. Use EXISTING nodes as reference but add/remove/restructure freely. Populate config fields meaningfully. Every node and edge must include a meaningful description.${configInstruction}${availableTypes}${archDescInstruction}`
+  if (mode === 'review') return `${base}\n\nGiven the architecture below, evaluate it. Return:\n{\n  "answer": "detailed analysis",\n  "score": 0-100,\n  "strengths": [...],\n  "weaknesses": [...],\n  "suggestions": [...],\n  "architectureDescription": "narrative explaining what the architecture does well, its key decisions, gaps, and how it addresses functional/non-functional requirements and scale",\n  "suggestedNotes": { "functional": "...", "nonFunctional": "...", "calculations": "...", "architecture": "same as architectureDescription or a concise version" }\n}\nBe specific — reference actual node names. Score on scalability, reliability, security, cost, completeness. Evaluate capacity planning, HPA settings, database schemas, routes, and security configurations where present.${archDescInstruction}`
+  return `${base}\n\nGiven the architecture below, enhance it by fixing missing metadata and configs. Return:\n{\n  "explanation": "summary of changes",\n  "architectureDescription": "narrative explaining why each change was made and how it improves the architecture, requirements handling, and scale",\n  "proposedChanges": [{ "nodeId": "id", "nodeLabel": "Name", "summary": "what changed and why", "oldConfig": {}, "newConfig": { ... all relevant config fields including capacityPlanning ... } }],\n  "suggestedNotes": { "functional": "...", "nonFunctional": "...", "calculations": "...", "architecture": "same as architectureDescription or a concise version" }\n}\nFill in: database→tables/columns/indexes/relations, server→routes/envVars/capacityPlanning, lb→routes/autoscaling/capacityPlanning, cache→settings/capacityPlanning, queue→topics/brokers/capacityPlanning, security→rules/policies, network→provider/capacityPlanning. For horizontally scalable components, set capacityPlanning with appropriate instanceCount and HPA settings. Only include nodes needing changes. Each proposedChange.summary must explain the rationale.${configInstruction}${availableTypes}${archDescInstruction}`
 }
+
+// ── Model discovery ──
+
+aiRouter.post('/models', async (req, res) => {
+  const { apiUrl, apiKey } = req.body
+
+  const effectiveKey = apiKey || process.env.OPENAI_API_KEY || ''
+  const effectiveUrl = (apiUrl || process.env.AI_API_URL || 'https://api.openai.com/v1')
+    .replace(/^[^a-zA-Z]*/, '')
+    .replace(/\/+$/, '')
+
+  console.log(`[models] Using base URL: ${effectiveUrl}`)
+
+  if (!effectiveKey) {
+    return res.status(400).json({ error: 'API key required to list models' })
+  }
+
+  try {
+    const modelsUrl = new URL(`${effectiveUrl}/models`)
+    modelsUrl.searchParams.set('return_wildcard_routes', 'false')
+    modelsUrl.searchParams.set('include_model_access_groups', 'false')
+    modelsUrl.searchParams.set('only_model_access_groups', 'false')
+    modelsUrl.searchParams.set('include_metadata', 'false')
+
+    console.log(`[models] Fetching from: ${modelsUrl.href}`)
+
+    const apiRes = await fetch(modelsUrl.href, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${effectiveKey}`,
+      },
+    })
+
+    if (!apiRes.ok) {
+      const errBody = await apiRes.text()
+      return res.status(apiRes.status).json({ error: `API error: ${apiRes.status} — ${errBody.slice(0, 300)}` })
+    }
+
+    const data: any = await apiRes.json()
+    const models: string[] = (data.data || [])
+      .map((m: any) => m.id)
+      .filter((id: string) => typeof id === 'string' && id.length > 0)
+      .sort()
+
+    res.json({ models })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
 
 // ── Streaming AI handler ──
 
@@ -299,32 +239,35 @@ aiRouter.post('/:mode', async (req, res) => {
     const fallbacks: Record<string, string> = {
       create: JSON.stringify({
         explanation: 'Sample architecture proposal. Set OPENAI_API_KEY for real AI.',
+        architectureDescription: 'This sample architecture uses an API Gateway to terminate traffic and route requests to a stateless API Server. The API Server reads/writes a PostgreSQL primary database for durability and uses Redis as a session cache to reduce latency. This split keeps compute stateless, allows independent scaling of each tier, and addresses read-heavy workloads through caching.',
         proposedNodes: [
-          { id: 'lb-1', type: 'load-balancer', label: 'API Gateway', config: { type: 'alb', autoscaling: { minCount: 2, maxCount: 10, desiredCount: 3, scaleUpThreshold: 70, scaleDownThreshold: 30, cooldownSeconds: 300 }, routes: [{ id: 'r1', path: '/api/*', method: 'ANY', targetPort: 8080, targetProtocol: 'HTTP', healthCheckPath: '/health', isActive: true }] } },
-          { id: 'app-1', type: 'application-server', label: 'API Server', config: { role: 'web-server', port: 8080, routes: [{ path: '/api/v1/users', method: 'GET', contentType: 'REST', description: 'List users', requestSchema: '{}', responseSchema: '{}' }], envVars: { DATABASE_URL: 'postgres://...' } } },
-          { id: 'db-1', type: 'database', label: 'Primary DB', config: { engine: 'postgres', version: '16', storage: 500, tables: [{ id: 't1', name: 'users', columns: [{ name: 'id', type: 'UUID', isPrimaryKey: true, isForeignKey: false, isIndexed: true, isNullable: false }, { name: 'email', type: 'VARCHAR(255)', isPrimaryKey: false, isForeignKey: false, isIndexed: true, isNullable: false }] }], relations: [] } },
-          { id: 'cache-1', type: 'caching', label: 'Session Cache', config: { engine: 'redis', version: '7.2', useCases: ['cache'], maxMemory: '1gb', evictionPolicy: 'allkeys-lru', persistence: 'rdb' } },
+          { id: 'lb-1', type: 'load-balancer', label: 'API Gateway', description: 'Terminates external traffic, performs TLS offload, and routes requests to the appropriate API servers.', config: { type: 'alb', autoscaling: { minCount: 2, maxCount: 10, desiredCount: 3, scaleUpThreshold: 70, scaleDownThreshold: 30, cooldownSeconds: 300 }, routes: [{ id: 'r1', path: '/api/*', method: 'ANY', targetPort: 8080, targetProtocol: 'HTTP', healthCheckPath: '/health', isActive: true }], capacityPlanning: { scalingMode: 'auto', instanceCount: 3, minInstances: 2, maxInstances: 10, instanceType: 't3.medium', cpuThreshold: 70, memoryThreshold: 80, capacityNotes: '2 ALB nodes minimum for HA, auto-scale up to 10 based on traffic' } } },
+          { id: 'app-1', type: 'application-server', label: 'API Server', description: 'Stateless compute tier that handles business logic and orchestrates reads/writes between cache and database.', config: { role: 'web-server', port: 8080, routes: [{ path: '/api/v1/users', method: 'GET', contentType: 'REST', description: 'List users', requestSchema: '{}', responseSchema: '{}' }], envVars: { DATABASE_URL: 'postgres://...' }, capacityPlanning: { scalingMode: 'auto', instanceCount: 4, minInstances: 2, maxInstances: 20, instanceType: 't3.medium', cpuThreshold: 70, memoryThreshold: 80, capacityNotes: 'Start with 4 instances for 1K RPS, auto-scale to 20 at 70% CPU' } } },
+          { id: 'db-1', type: 'database', label: 'Primary DB', description: 'Relational database of record for durable, strongly-consistent data.', config: { engine: 'postgres', version: '16', storage: 500, tables: [{ id: 't1', name: 'users', columns: [{ name: 'id', type: 'UUID', isPrimaryKey: true, isForeignKey: false, isIndexed: true, isNullable: false }, { name: 'email', type: 'VARCHAR(255)', isPrimaryKey: false, isForeignKey: false, isIndexed: true, isNullable: false }] }], relations: [], capacityPlanning: { scalingMode: 'fixed', instanceCount: 1, minInstances: 1, maxInstances: 5, instanceType: 'r6i.2xlarge', cpuThreshold: 70, memoryThreshold: 80, capacityNotes: 'Primary instance with 500GB storage; add read replicas for read-heavy workloads' } } },
+          { id: 'cache-1', type: 'caching', label: 'Session Cache', description: 'Low-latency key-value store for session data and hot reads, reducing load on the primary database.', config: { engine: 'redis', version: '7.2', useCases: ['cache'], maxMemory: '1gb', evictionPolicy: 'allkeys-lru', persistence: 'rdb', capacityPlanning: { scalingMode: 'fixed', instanceCount: 3, minInstances: 1, maxInstances: 6, instanceType: 'cache.m5.large', cpuThreshold: 70, memoryThreshold: 80, capacityNotes: '3-node Redis cluster for HA, 1GB per node' } } },
         ],
         proposedEdges: [
-          { source: 'lb-1', target: 'app-1' },
-          { source: 'app-1', target: 'db-1' },
-          { source: 'app-1', target: 'cache-1' },
+          { source: 'lb-1', target: 'app-1', description: 'Incoming client requests are forwarded from the gateway to healthy API servers.' },
+          { source: 'app-1', target: 'db-1', description: 'API servers persist durable state and run transactional queries against the primary database.' },
+          { source: 'app-1', target: 'cache-1', description: 'Frequently accessed session and lookup data is served from cache to improve latency.' },
         ],
-        suggestedNotes: { functional: 'User management API', nonFunctional: '<200ms latency', calculations: '10K DAU' },
+        suggestedNotes: { functional: 'User management API', nonFunctional: '<200ms latency', calculations: '10K DAU', architecture: 'API Gateway → API Server → PostgreSQL + Redis. Stateless compute, cached sessions, durable primary database.' },
       }),
       review: JSON.stringify({
         answer: 'The architecture is well-structured.', score: 72,
         strengths: ['Good separation of concerns', 'Redis caching'],
         weaknesses: ['No DB redundancy', 'Missing monitoring'],
         suggestions: ['Add read replica', 'Add monitoring stack'],
-        suggestedNotes: { nonFunctional: 'Target 99.95% availability' },
+        architectureDescription: 'The architecture separates ingress, compute, storage, and caching into distinct tiers, which simplifies scaling and reasoning. Redis caching improves read latency. However, it lacks a read replica for availability and a monitoring stack for operability at scale.',
+        suggestedNotes: { nonFunctional: 'Target 99.95% availability', architecture: 'Separation of tiers is good; add read replica and monitoring for scale.' },
       }),
       modify: JSON.stringify({
         explanation: 'Sample modification. Set OPENAI_API_KEY for real AI.',
+        architectureDescription: 'Adding a users table with proper indexing turns the generic database into a concrete persistence layer for the application. Indexes on primary and foreign keys support scalable lookups.',
         proposedChanges: [
-          { nodeId: 'node-1', nodeLabel: 'Database', summary: 'Added table schemas and indexes', oldConfig: { engine: 'postgres', tables: [] }, newConfig: { engine: 'postgres', tables: [{ id: 't1', name: 'users', columns: [] }] } },
+          { nodeId: 'node-1', nodeLabel: 'Database', summary: 'Added table schemas and indexes to support user queries at scale', oldConfig: { engine: 'postgres', tables: [] }, newConfig: { engine: 'postgres', tables: [{ id: 't1', name: 'users', columns: [] }] } },
         ],
-        suggestedNotes: { functional: 'Added user table', calculations: 'Storage increased' },
+        suggestedNotes: { functional: 'Added user table', calculations: 'Storage increased', architecture: 'Schema added to the primary database with indexes for scalable reads.' },
       }),
     }
 
@@ -384,6 +327,7 @@ async function queryAi(prompt: string): Promise<string> {
       functional: '- Upload with transcoding\n- Streaming with adaptive bitrate\n- Search and discovery',
       nonFunctional: '- 99.99% uptime\n- <200ms latency\n- 2B+ MAU',
       calculations: '- DAU: 500M\n- Storage: 250TB/day\n- CDN: 5.6 Tbps',
+      architecture: '',
     })
   }
 

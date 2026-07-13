@@ -1,4 +1,5 @@
 import type { NodeTypeDefinition, NodeConfig } from './base.js'
+import { capacityPlanningDefault, capacityPlanningFields } from './capacity.js'
 
 export type CachingEngine = 'redis' | 'in-memory'
 
@@ -30,6 +31,7 @@ export const cachingDefinition: NodeTypeDefinition<CacheConfig> = {
     maxMemory: '512mb',
     evictionPolicy: 'allkeys-lru',
     persistence: 'rdb',
+    capacityPlanning: { ...capacityPlanningDefault, instanceCount: 3, scalingMode: 'fixed', minInstances: 1, maxInstances: 6, instanceType: 'cache.m5.large' },
   },
   configFields: [
     {
@@ -85,5 +87,6 @@ export const cachingDefinition: NodeTypeDefinition<CacheConfig> = {
         { label: 'Both RDB + AOF', value: 'both' },
       ],
     },
+    capacityPlanningFields,
   ],
 }

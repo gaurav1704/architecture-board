@@ -1,4 +1,5 @@
 import type { NodeTypeDefinition, NodeConfig } from './base.js'
+import { capacityPlanningDefault, capacityPlanningFields } from './capacity.js'
 
 export type DatabaseEngine = 'mongodb' | 'postgres' | 'clickhouse'
 
@@ -52,6 +53,7 @@ export const databaseDefinition: NodeTypeDefinition<DatabaseConfig> = {
     storage: 100,
     tables: [],
     relations: [],
+    capacityPlanning: { ...capacityPlanningDefault, instanceCount: 1, scalingMode: 'fixed', minInstances: 1, maxInstances: 5, instanceType: 'r6i.2xlarge' },
   },
   configFields: [
     {
@@ -117,5 +119,6 @@ export const databaseDefinition: NodeTypeDefinition<DatabaseConfig> = {
         },
       ],
     },
+    capacityPlanningFields,
   ],
 }

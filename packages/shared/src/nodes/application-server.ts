@@ -1,4 +1,5 @@
 import type { NodeTypeDefinition, NodeConfig } from './base.js'
+import { capacityPlanningDefault, capacityPlanningFields } from './capacity.js'
 
 export type ServerRole = 'web-server' | 'cronjob' | 'consumer' | 'producer' | 'static-worker'
 
@@ -36,6 +37,7 @@ export const applicationServerDefinition: NodeTypeDefinition<ApplicationServerCo
     port: 8080,
     routes: [],
     envVars: {},
+    capacityPlanning: { ...capacityPlanningDefault, instanceCount: 3, scalingMode: 'auto', minInstances: 2, maxInstances: 20, instanceType: 't3.medium' },
   },
   configFields: [
     {
@@ -106,5 +108,6 @@ export const applicationServerDefinition: NodeTypeDefinition<ApplicationServerCo
       type: 'json',
       description: 'Key-value pairs for environment configuration',
     },
+    capacityPlanningFields,
   ],
 }

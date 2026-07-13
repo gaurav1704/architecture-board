@@ -24,6 +24,7 @@ export function BoardInfoModal({ open, onClose }: BoardInfoModalProps) {
         functional: data.functional || notes.functional,
         nonFunctional: data.nonFunctional || notes.nonFunctional,
         calculations: data.calculations || notes.calculations,
+        architecture: notes.architecture,
       })
     } catch (err) {
       console.error('HLD generate error:', err)
@@ -97,6 +98,15 @@ export function BoardInfoModal({ open, onClose }: BoardInfoModalProps) {
             value={notes.calculations}
             onChange={(v) => setNotes({ ...notes, calculations: v })}
             placeholder="DAU estimates, traffic volume, storage needs, bandwidth, cost projections..."
+          />
+
+          <div style={{ height: 1, background: '#2a2a4a', margin: '20px 0' }} />
+
+          <SectionField
+            title="Architecture Description"
+            value={notes.architecture}
+            onChange={(v) => setNotes({ ...notes, architecture: v })}
+            placeholder="Describe the overall architecture: what each component does, how data/request flows, how functional/non-functional requirements are met, and how the system scales..."
           />
         </div>
         <div className="modal-footer">

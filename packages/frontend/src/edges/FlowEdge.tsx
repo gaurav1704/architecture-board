@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath, getBezierPath, type EdgeProps } from 'reactflow'
 import type { FlowDirection } from '@board/shared'
 import { useBoardStore } from '../store/boardStore.js'
@@ -37,6 +37,11 @@ function FlowEdge({
   const selectedNodeIds = useBoardStore((s) => s.selectedNodeIds)
   const selectedNodeId = useBoardStore((s) => s.selectedNodeId)
   const isConnectedToSelected = selectedNodeIds.includes(source) || selectedNodeIds.includes(target) || selectedNodeId === source || selectedNodeId === target
+  const updateEdgeDescription = useBoardStore((s) => s.updateEdgeDescription)
+  const description = (data as any)?.description as string | undefined
+
+  const [showDetail, setShowDetail] = useState(false)
+  const [draft, setDraft] = useState(description || '')
 
   const [edgePath, labelX, labelY] = useMemo(() => {
     const getPath = edgeStyle === 'smoothstep' ? getSmoothStepPath : getBezierPath
@@ -62,6 +67,8 @@ function FlowEdge({
   const markerEndSel = direction === 'ltr' || direction === 'bidirectional' ? `url(#arrow-end-sel)` : undefined
   const markerStartSel = direction === 'rtl' ? `url(#arrow-start-sel)` : direction === 'bidirectional' ? `url(#arrow-end-rev-sel)` : undefined
 
+  const isHighlighted = selected || isConnectedToSelected
+
   return (
     <>
       <defs>
@@ -85,40 +92,130 @@ function FlowEdge({
         </marker>
       </defs>
       {/* Wider invisible hit area for easier clicking */}
-      <path d={edgePath} fill="none" stroke="transparent" strokeWidth={20} style={{ cursor: 'pointer', pointerEvents: 'stroke' }} />
+      <path d={edgePath} fill="none" stroke="transparent" strokeWidth={20} style={{ cursor: 'pointer', pointerEvents: 'stroke' }}>
+        <title>{description || directionLabels[direction]}</title>
+      </path>
       <BaseEdge
         id={id}
         path={edgePath}
         style={{
-          stroke: selected || isConnectedToSelected ? '#8af' : '#4a4a6a',
-          strokeWidth: selected || isConnectedToSelected ? 3 : 2,
+          stroke: isHighlighted ? '#8af' : '#4a4a6a',
+          strokeWidth: isHighlighted ? 3 : 2,
           cursor: 'pointer',
-          filter: selected || isConnectedToSelected ? 'drop-shadow(0 0 4px rgba(90,138,255,0.5))' : undefined,
+          filter: isHighlighted ? 'drop-shadow(0 0 4px rgba(90,138,255,0.5))' : undefined,
           transition: 'stroke 0.15s, stroke-width 0.15s',
         }}
-        markerEnd={selected || isConnectedToSelected ? markerEndSel : markerEnd}
-        markerStart={selected || isConnectedToSelected ? markerStartSel : markerStart}
+        markerEnd={isHighlighted ? markerEndSel : markerEnd}
+        markerStart={isHighlighted ? markerStartSel : markerStart}
       />
       <EdgeLabelRenderer>
         <div
           style={{
             position: 'absolute',
             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-            background: selected || isConnectedToSelected ? '#2a2a5a' : '#1a1a2e',
-            border: `1px solid ${selected || isConnectedToSelected ? '#8af' : '#4a4a6a'}`,
+            background: isHighlighted ? '#2a2a5a' : '#1a1a2e',
+            border: `1px solid ${isHighlighted ? '#8af' : '#4a4a6a'}`,
             borderRadius: 4,
             padding: '2px 6px',
             fontSize: 11,
-            color: selected || isConnectedToSelected ? '#8af' : '#888',
+            color: isHighlighted ? '#8af' : '#888',
             cursor: 'pointer',
             whiteSpace: 'nowrap',
             pointerEvents: 'all',
             transition: 'all 0.15s',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
           }}
-          title={directionLabels[direction]}
+          title={description || directionLabels[direction]}
         >
-          {directionIcons[direction] || '→'}
+          <span>{directionIcons[direction] || '→'}</span>
+          {isHighlighted && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setDraft(description || '')
+                setShowDetail(true)
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#8af',
+                cursor: 'pointer',
+                fontSize: 10,
+                padding: 0,
+                textDecoration: 'underline',
+              }}
+            >
+              {description ? 'View' : 'Add'}
+            </button>
+          )}
         </div>
+
+        {showDetail && (
+          <div
+            style={{
+              position: 'absolute',
+              transform: `translate(-50%, -100%) translate(${labelX}px,${labelY - 16}px)`,
+              background: '#1a1a2e',
+              border: '1px solid #4a4a6a',
+              borderRadius: 8,
+              padding: 12,
+              width: 280,
+              boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+              zIndex: 100,
+              pointerEvents: 'all',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#eee' }}>Flow description</span>
+              <button
+                onClick={() => setShowDetail(false)}
+                style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', fontSize: 14 }}
+              >
+                ✕
+              </button>
+            </div>
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="Why is this connection needed? What data/traffic flows here?"
+              style={{
+                width: '100%',
+                minHeight: 80,
+                background: '#0f0f1a',
+                border: '1px solid #3a3a5a',
+                borderRadius: 6,
+                color: '#ccc',
+                fontSize: 12,
+                padding: 8,
+                outline: 'none',
+                resize: 'vertical',
+                boxSizing: 'border-box',
+              }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+              <button
+                className="btn-secondary"
+                style={{ fontSize: 11, padding: '4px 10px' }}
+                onClick={() => setShowDetail(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="topbar-btn"
+                style={{ fontSize: 11, padding: '4px 10px' }}
+                onClick={() => {
+                  updateEdgeDescription(id, draft.trim())
+                  setShowDetail(false)
+                }}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        )}
       </EdgeLabelRenderer>
     </>
   )

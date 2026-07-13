@@ -21,11 +21,14 @@ export function Topbar() {
   const edgeStyle = useBoardStore((s) => s.edgeStyle)
   const setEdgeStyle = useBoardStore((s) => s.setEdgeStyle)
   const reLayout = useBoardStore((s) => s.reLayout)
+  const setBoardName = useBoardStore((s) => s.setBoardName)
   const selectedGroupIds = useBoardStore((s) => s.selectedGroupIds)
   const nodes = useBoardStore((s) => s.nodes)
   const createGroup = useBoardStore((s) => s.createGroup)
   const [copied, setCopied] = useState(false)
   const [infoOpen, setInfoOpen] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [nameDraft, setNameDraft] = useState(boardName)
 
   const isOwner = collaboration.controlOwnerId === collaboration.myUserId
   const hasControl = !!collaboration.controlOwnerId
@@ -53,12 +56,57 @@ export function Topbar() {
   }, [nodes, createGroup])
 
   return (
-    <div className="topbar" style={{ left: sidebarOpen ? 140 : 0 }}>
+    <div className="topbar">
       <div className="topbar-left">
         <button className="topbar-btn" onClick={toggleSidebar} style={{ fontSize: 16, padding: '4px 8px' }}>
           {sidebarOpen ? '✕' : '☰'}
         </button>
-        <h1>{boardName}</h1>
+        {editingName ? (
+          <input
+            autoFocus
+            value={nameDraft}
+            onChange={(e) => setNameDraft(e.target.value)}
+            onBlur={() => {
+              const trimmed = nameDraft.trim()
+              if (trimmed && trimmed !== boardName) setBoardName(trimmed)
+              setEditingName(false)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                const trimmed = nameDraft.trim()
+                if (trimmed && trimmed !== boardName) setBoardName(trimmed)
+                setEditingName(false)
+              }
+              if (e.key === 'Escape') {
+                setNameDraft(boardName)
+                setEditingName(false)
+              }
+            }}
+            style={{
+              background: '#0f0f1a',
+              border: '1px solid #4a4a6a',
+              borderRadius: 6,
+              color: '#eee',
+              fontSize: 16,
+              fontWeight: 500,
+              padding: '2px 8px',
+              outline: 'none',
+              minWidth: 120,
+              maxWidth: 260,
+            }}
+          />
+        ) : (
+          <h1
+            onClick={() => {
+              setNameDraft(boardName)
+              setEditingName(true)
+            }}
+            title="Click to rename"
+            style={{ cursor: 'pointer' }}
+          >
+            {boardName}
+          </h1>
+        )}
         <button className="share-btn" onClick={handleShare}>
           {copied ? '✓ Copied!' : '🔗 Share'}
         </button>

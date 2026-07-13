@@ -13,6 +13,35 @@ import type {
   AiMode,
 } from '@board/shared'
 import { getNodeType, getAllNodeTypes } from '@board/shared'
+import { computeLayout } from '@board/shared'
+
+function mergeReverseEdges(edges: BoardEdge[]): BoardEdge[] {
+  const toRemove = new Set<string>()
+  const updates = new Map<string, BoardEdge>()
+
+  for (const e of edges) {
+    if (toRemove.has(e.id)) continue
+    if (e.direction === 'bidirectional') continue
+
+    const reverse = edges.find(
+      (re) =>
+        re.id !== e.id &&
+        re.source === e.target &&
+        re.target === e.source &&
+        !toRemove.has(re.id)
+    )
+    if (reverse) {
+      updates.set(e.id, { ...e, direction: 'bidirectional' as FlowDirection })
+      toRemove.add(reverse.id)
+    }
+  }
+
+  if (toRemove.size === 0) return edges
+
+  return edges
+    .filter((e) => !toRemove.has(e.id))
+    .map((e) => updates.get(e.id) || e)
+}
 
 interface CollaborationInfo {
   connectedUsers: ConnectedUser[]
@@ -97,6 +126,7 @@ interface BoardStore {
   setEdges: (edges: BoardEdge[]) => void
   addNode: (type: string, position: { x: number; y: number }, parentId?: string) => void
   updateNodeConfig: (nodeId: string, config: NodeConfig) => void
+  updateNodeDescription: (nodeId: string, description: string) => void
   updateNodePosition: (nodeId: string, position: { x: number; y: number }) => void
   setNodeLabel: (nodeId: string, label: string) => void
   removeNode: (nodeId: string) => void
@@ -120,6 +150,7 @@ interface BoardStore {
   selectedEdgeId: string | null
   setFlowDirection: (dir: FlowDirection) => void
   updateEdgeDirection: (edgeId: string, direction: FlowDirection) => void
+  updateEdgeDescription: (edgeId: string, description: string) => void
   selectEdge: (edgeId: string | null) => void
   setSelectedGroupIds: (ids: string[]) => void
   setActiveTool: (tool: 'pan' | 'rectangle' | 'freeform') => void
@@ -140,7 +171,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
   edges: [],
   groups: [],
   problemStatement: '',
-  notes: { functional: '', nonFunctional: '', calculations: '' },
+  notes: { functional: '', nonFunctional: '', calculations: '', architecture: '' },
   selectedNodeId: null,
   editingNodeId: null,
   encloseCandidates: null,
@@ -182,8 +213,9 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     return { nodes, undoStack: [...state.undoStack.slice(-49), snapshot], redoStack: [] }
   }),
   setEdges: (edges) => set((state) => {
+    const merged = mergeReverseEdges(edges)
     const snapshot = { nodes: state.nodes, edges: state.edges, groups: state.groups }
-    return { edges, undoStack: [...state.undoStack.slice(-49), snapshot], redoStack: [] }
+    return { edges: merged, undoStack: [...state.undoStack.slice(-49), snapshot], redoStack: [] }
   }),
 
   addNode: (type, position, parentId) => {
@@ -208,6 +240,16 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       const snapshot = { nodes: state.nodes, edges: state.edges, groups: state.groups }
       return {
         nodes: state.nodes.map((n) => n.id === nodeId ? { ...n, config: { ...n.config, ...config } as NodeConfig } : n),
+        undoStack: [...state.undoStack.slice(-49), snapshot],
+        redoStack: [],
+      }
+    })
+  },
+  updateNodeDescription: (nodeId, description) => {
+    set((state) => {
+      const snapshot = { nodes: state.nodes, edges: state.edges, groups: state.groups }
+      return {
+        nodes: state.nodes.map((n) => n.id === nodeId ? { ...n, description } : n),
         undoStack: [...state.undoStack.slice(-49), snapshot],
         redoStack: [],
       }
@@ -258,12 +300,12 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
   importBoard: (board) =>
     set({
       nodes: board.nodes,
-      edges: board.edges,
+      edges: mergeReverseEdges(board.edges),
       groups: board.groups || [],
       boardName: board.name,
       boardId: board.id,
       problemStatement: board.problemStatement || '',
-      notes: board.notes || { functional: '', nonFunctional: '', calculations: '' },
+      notes: board.notes || { functional: '', nonFunctional: '', calculations: '', architecture: '' },
     }),
 
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
@@ -280,6 +322,16 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       const snapshot = { nodes: state.nodes, edges: state.edges, groups: state.groups }
       return {
         edges: state.edges.map((e) => e.id === edgeId ? { ...e, direction } : e),
+        undoStack: [...state.undoStack.slice(-49), snapshot],
+        redoStack: [],
+      }
+    })
+  },
+  updateEdgeDescription: (edgeId, description) => {
+    set((state) => {
+      const snapshot = { nodes: state.nodes, edges: state.edges, groups: state.groups }
+      return {
+        edges: state.edges.map((e) => e.id === edgeId ? { ...e, description } : e),
         undoStack: [...state.undoStack.slice(-49), snapshot],
         redoStack: [],
       }
@@ -326,123 +378,14 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
   setLayoutDirection: (dir) => set({ layoutDirection: dir }),
   setEdgeStyle: (style) => set({ edgeStyle: style }),
   reLayout: (aiLayout?: Record<string, number>) => set((state) => {
-    const NODE_W = 180, NODE_H = 80, PAD = 60
-    const edges = state.edges
-    const nodes = state.nodes
-    const isLR = state.layoutDirection === 'LR'
-
-    // Use AI-provided layout if available, otherwise compute from edges
-    const layerOf = new Map<string, number>()
-    if (aiLayout) {
-      for (const n of nodes) {
-        layerOf.set(n.id, aiLayout[n.id] ?? 0)
-      }
-    } else {
-      // 1. Find roots (no incoming edges)
-      const targets = new Set(edges.map((e) => e.target))
-      const roots = nodes.filter((n) => !targets.has(n.id))
-      const remaining = new Set(nodes.map((n) => n.id))
-
-      // 2. BFS to assign layers
-      const parents = new Map<string, string[]>()
-      for (const e of edges) {
-        if (!parents.has(e.target)) parents.set(e.target, [])
-        parents.get(e.target)!.push(e.source)
-      }
-
-      const childrenOf = new Map<string, string[]>()
-      for (const e of edges) {
-        if (!childrenOf.has(e.source)) childrenOf.set(e.source, [])
-        childrenOf.get(e.source)!.push(e.target)
-      }
-
-      const queue: string[] = roots.map((r) => r.id)
-      for (const r of roots) { layerOf.set(r.id, 0); remaining.delete(r.id) }
-
-      while (queue.length > 0) {
-        const id = queue.shift()!
-        const depth = layerOf.get(id) ?? 0
-        for (const child of childrenOf.get(id) || []) {
-          const newDepth = depth + 1
-          if (!layerOf.has(child) || layerOf.get(child)! < newDepth) {
-            layerOf.set(child, newDepth)
-            remaining.delete(child)
-          }
-          if (!queue.includes(child)) queue.push(child)
-        }
-      }
-      for (const id of remaining) if (!layerOf.has(id)) layerOf.set(id, 0)
-    }
-
-    // 3. Group by layer
-    const layers = new Map<number, any[]>()
-    for (const n of nodes) {
-      const l = layerOf.get(n.id) ?? 0
-      if (!layers.has(l)) layers.set(l, [])
-      layers.get(l)!.push(n)
-    }
-    const sortedLayers = Array.from(layers.entries()).sort((a, b) => a[0] - b[0])
-
-    // 4. Within each layer, sort nodes by parent position to keep children near parents
-    for (let li = 0; li < sortedLayers.length; li++) {
-      const [layerNum, layerNodes] = sortedLayers[li]
-      sortedLayers[li][1] = layerNodes.sort((a, b) => {
-        const aParents = parents.get(a.id) || []
-        const bParents = parents.get(b.id) || []
-        // Get avg parent layer position index for each
-        const aAvg = avgParentIndex(aParents, layers, layerOf, li)
-        const bAvg = avgParentIndex(bParents, layers, layerOf, li)
-        return aAvg - bAvg
-      })
-    }
-
-    function avgParentIndex(parentIds: string[], layerMap: Map<number, any[]>, layerMap2: Map<string, number>, currentLayerIdx: number): number {
-      if (parentIds.length === 0) return 0
-      let sum = 0, count = 0
-      for (const pid of parentIds) {
-        const parentLayer = layerMap2.get(pid) ?? 0
-        const layerNodes = layerMap.get(parentLayer)
-        if (layerNodes) {
-          const idx = layerNodes.findIndex((n: any) => n.id === pid)
-          if (idx >= 0) { sum += idx; count++ }
-        }
-      }
-      return count > 0 ? sum / count : 0
-    }
-
-    // 5. Dynamic spacing: gap scales with max nodes across layers
-    const maxNodesPerLayer = Math.max(...sortedLayers.map(([, ln]) => ln.length), 1)
-    const H_GAP = isLR ? 60 : Math.max(40, Math.min(100, 400 / maxNodesPerLayer))
-    const V_GAP = isLR ? Math.max(40, Math.min(100, 400 / maxNodesPerLayer)) : 50
-
-    let maxSpan = 0
-    for (const [, layerNodes] of sortedLayers) {
-      const span = layerNodes.length * (isLR ? NODE_H + V_GAP : NODE_W + H_GAP) - (isLR ? V_GAP : H_GAP)
-      if (span > maxSpan) maxSpan = span
-    }
-
-    const resultNodes: any[] = []
-    for (const [layerIdx, layerNodes] of sortedLayers) {
-      const count = layerNodes.length
-      if (isLR) {
-        const x = PAD + layerIdx * (NODE_W + H_GAP)
-        const colH = count * (NODE_H + V_GAP) - V_GAP
-        const startY = PAD + (maxSpan - colH) / 2
-        for (let i = 0; i < count; i++) {
-          resultNodes.push({ ...layerNodes[i], position: { x, y: startY + i * (NODE_H + V_GAP) } })
-        }
-      } else {
-        const y = PAD + layerIdx * (NODE_H + V_GAP)
-        const rowW = count * (NODE_W + H_GAP) - H_GAP
-        const startX = PAD + (maxSpan - rowW) / 2
-        for (let i = 0; i < count; i++) {
-          resultNodes.push({ ...layerNodes[i], position: { x: startX + i * (NODE_W + H_GAP), y } })
-        }
-      }
-    }
-
+    const layout = computeLayout(
+      state.nodes as any,
+      state.edges.map((e) => ({ source: e.source, target: e.target, label: e.label })),
+      state.layoutDirection,
+      aiLayout
+    )
     const snapshot = { nodes: state.nodes, edges: state.edges, groups: state.groups }
-    return { nodes: resultNodes, undoStack: [...state.undoStack.slice(-49), snapshot], redoStack: [] }
+    return { nodes: layout.nodes as BoardNode[], undoStack: [...state.undoStack.slice(-49), snapshot], redoStack: [] }
   }),
   setProblemStatement: (text) => set({ problemStatement: text }),
   pushHistory: () => set((state) => {

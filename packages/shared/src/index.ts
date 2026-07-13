@@ -26,7 +26,26 @@ import {
   squareDefinition,
   circleDefinition,
   cloudDefinition,
+  cassandraDefinition,
+  scyllaDbDefinition,
+  dynamoDbDefinition,
+  mariaDbDefinition,
+  msSqlDefinition,
+  oracleDbDefinition,
+  snowflakeDefinition,
+  bigQueryDefinition,
+  timescaleDbDefinition,
+  influxDbDefinition,
+  neo4jDefinition,
 } from './nodes/new-nodes.js'
+import {
+  cdnDefinition,
+  firewallDefinition,
+  keyVaultDefinition,
+  dnsResolverDefinition,
+  secretManagerDefinition,
+  kmsDefinition,
+} from './nodes/infrastructure.js'
 
 registerNodeType(loadBalancerDefinition)
 registerNodeType(databaseDefinition)
@@ -54,6 +73,23 @@ registerNodeType(rectangleDefinition)
 registerNodeType(squareDefinition)
 registerNodeType(circleDefinition)
 registerNodeType(cloudDefinition)
+registerNodeType(cassandraDefinition)
+registerNodeType(scyllaDbDefinition)
+registerNodeType(dynamoDbDefinition)
+registerNodeType(mariaDbDefinition)
+registerNodeType(msSqlDefinition)
+registerNodeType(oracleDbDefinition)
+registerNodeType(snowflakeDefinition)
+registerNodeType(bigQueryDefinition)
+registerNodeType(timescaleDbDefinition)
+registerNodeType(influxDbDefinition)
+registerNodeType(neo4jDefinition)
+registerNodeType(cdnDefinition)
+registerNodeType(firewallDefinition)
+registerNodeType(keyVaultDefinition)
+registerNodeType(dnsResolverDefinition)
+registerNodeType(secretManagerDefinition)
+registerNodeType(kmsDefinition)
 
 export * from './nodes/base.js'
 export * from './nodes/registry.js'
@@ -66,6 +102,8 @@ export * from './nodes/messaging-queue.js'
 export * from './nodes/vpc.js'
 export * from './nodes/vpc-peering.js'
 export * from './nodes/new-nodes.js'
+export * from './nodes/infrastructure.js'
+export * from './nodes/capacity.js'
 export * from './board.js'
 export * from './collaboration.js'
 export * from './chat.js'

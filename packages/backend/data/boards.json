@@ -39,7 +39,7 @@
     "name": "Untitled Board",
     "shareId": "0a8c7d06",
     "createdAt": "2026-07-12T17:41:14.454Z",
-    "updatedAt": "2026-07-13T00:31:06.985Z",
+    "updatedAt": "2026-07-13T13:06:52.864Z",
     "ownerId": "anonymous",
     "problemStatement": "",
     "notes": {
@@ -49,120 +49,658 @@
     },
     "nodes": [
       {
-        "id": "node-1783878078640-odg5e",
+        "id": "alb",
         "type": "load-balancer",
         "position": {
-          "x": 220.48670735726364,
-          "y": 405.5231076504565
+          "x": 771.4285714285714,
+          "y": 60
         },
         "config": {
-          "type": "alb",
-          "autoscaling": {
-            "minCount": 1,
-            "maxCount": 10,
-            "desiredCount": 2,
-            "scaleUpThreshold": 70,
-            "scaleDownThreshold": 30,
-            "cooldownSeconds": 300
-          },
+          "port": 443,
+          "protocol": "HTTPS",
+          "ssl_certificate": "arn:aws:acm:...",
+          "health_check_path": "/health",
+          "target_group": "microservices"
+        },
+        "label": "AWS ALB"
+      },
+      {
+        "id": "rider-service",
+        "type": "application-server",
+        "position": {
+          "x": 58.38871676022677,
+          "y": 292.7910784767587
+        },
+        "config": {
+          "language": "Golang",
+          "apache_benchmark": "5K RPS",
+          "endpoints": [
+            {
+              "path": "/riders/register",
+              "method": "POST",
+              "description": "Register a new rider account"
+            },
+            {
+              "path": "/riders/login",
+              "method": "POST",
+              "description": "Authenticate rider and return token"
+            },
+            {
+              "path": "/riders/profile",
+              "method": "GET",
+              "description": "Get rider profile details"
+            }
+          ],
           "routes": []
         },
-        "label": "Load Balancer"
+        "label": "Rider Service"
       },
       {
-        "id": "node-1783878081740-p9dh2",
+        "id": "driver-service",
         "type": "application-server",
         "position": {
-          "x": 655.7573792454667,
-          "y": 320.2809832614267
+          "x": 295.5315739030839,
+          "y": 291.5108441057082
         },
         "config": {
-          "role": "web-server",
-          "port": 8080,
-          "routes": [],
-          "envVars": {}
-        },
-        "label": "Application Server"
-      },
-      {
-        "id": "node-1783878083786-qqq26",
-        "type": "application-server",
-        "position": {
-          "x": 658,
-          "y": 495
-        },
-        "config": {
-          "role": "web-server",
-          "port": 8080,
-          "routes": [],
-          "envVars": {}
-        },
-        "label": "Application Server"
-      },
-      {
-        "id": "node-1783878232909-15aok",
-        "type": "load-balancer",
-        "position": {
-          "x": 222,
-          "y": 236
-        },
-        "config": {
-          "type": "alb",
-          "autoscaling": {
-            "minCount": 1,
-            "maxCount": 10,
-            "desiredCount": 2,
-            "scaleUpThreshold": 70,
-            "scaleDownThreshold": 30,
-            "cooldownSeconds": 300
-          },
-          "routes": [
+          "language": "Golang",
+          "apache_benchmark": "5K RPS",
+          "endpoints": [
             {
-              "path": "",
-              "method": "",
-              "targetPort": 80,
-              "targetProtocol": "",
-              "healthCheckPath": "",
-              "isActive": true,
-              "id": "routes-1783879741867-bzz"
+              "path": "/drivers/register",
+              "method": "POST",
+              "description": "Register a new driver account"
+            },
+            {
+              "path": "/drivers/login",
+              "method": "POST",
+              "description": "Authenticate driver and return token"
+            },
+            {
+              "path": "/drivers/status",
+              "method": "PUT",
+              "description": "Update driver availability and location"
             }
           ]
         },
-        "label": "Load Balancer"
+        "label": "Driver Service"
       },
       {
-        "id": "node-1783878248974-ggn7c",
-        "type": "database",
+        "id": "payment-service",
+        "type": "application-server",
         "position": {
-          "x": 221,
-          "y": 575
+          "x": 532.674431045941,
+          "y": 291.5108441057082
         },
         "config": {
-          "engine": "postgres",
-          "version": "16",
-          "storage": 100,
-          "tables": [],
-          "relations": []
+          "language": "Java",
+          "apache_benchmark": "2K RPS",
+          "endpoints": [
+            {
+              "path": "/payments/charge",
+              "method": "POST",
+              "description": "Charge a rider's payment method"
+            },
+            {
+              "path": "/payments/refund",
+              "method": "POST",
+              "description": "Issue a refund to rider"
+            }
+          ]
         },
-        "label": "Database"
+        "label": "Payment Service"
+      },
+      {
+        "id": "notification-service",
+        "type": "application-server",
+        "position": {
+          "x": 769.8172881887982,
+          "y": 291.5108441057082
+        },
+        "config": {
+          "language": "Node.js",
+          "apache_benchmark": "5K RPS",
+          "endpoints": [
+            {
+              "path": "/notifications/send",
+              "method": "POST",
+              "description": "Send notification via SMS or email"
+            }
+          ]
+        },
+        "label": "Notification Service"
+      },
+      {
+        "id": "tracking-service",
+        "type": "application-server",
+        "position": {
+          "x": 1006.9601453316553,
+          "y": 291.5108441057082
+        },
+        "config": {
+          "language": "Go",
+          "protocol": "WebSocket",
+          "connections_capacity": "10K"
+        },
+        "label": "Real‑time Tracking Service (WebSocket)"
+      },
+      {
+        "id": "ride-service",
+        "type": "application-server",
+        "position": {
+          "x": 1244.1030024745126,
+          "y": 291.5108441057082
+        },
+        "config": {
+          "language": "Java",
+          "apache_benchmark": "3K RPS",
+          "endpoints": [
+            {
+              "path": "/rides/request",
+              "method": "POST",
+              "description": "Request a ride from rider"
+            },
+            {
+              "path": "/rides/accept",
+              "method": "POST",
+              "description": "Driver accepts a ride request"
+            },
+            {
+              "path": "/rides/start",
+              "method": "POST",
+              "description": "Start the ride trip"
+            },
+            {
+              "path": "/rides/complete",
+              "method": "POST",
+              "description": "Complete the ride trip"
+            }
+          ]
+        },
+        "label": "Ride Service"
+      },
+      {
+        "id": "pricing-service",
+        "type": "application-server",
+        "position": {
+          "x": 1481.2458596173697,
+          "y": 291.5108441057082
+        },
+        "config": {
+          "language": "Python",
+          "apache_benchmark": "2K RPS",
+          "endpoints": [
+            {
+              "path": "/pricing/estimate",
+              "method": "POST",
+              "description": "Get fare estimate based on distance and time"
+            },
+            {
+              "path": "/pricing/surge",
+              "method": "POST",
+              "description": "Calculate surge multiplier for current demand"
+            }
+          ]
+        },
+        "label": "Pricing Service"
+      },
+      {
+        "id": "payment-gateway",
+        "type": "external-system",
+        "position": {
+          "x": 61.61128323977323,
+          "y": 635.8115149955365
+        },
+        "config": {
+          "api_rate_limit": "500 requests/second",
+          "webhook_url": "https://payment-service/webhook"
+        },
+        "label": "Stripe / Braintree"
+      },
+      {
+        "id": "kafka",
+        "type": "messaging-queue",
+        "position": {
+          "x": 298.75414038263034,
+          "y": 635.8115149955365
+        },
+        "config": {
+          "partitions": 10,
+          "replication_factor": 3,
+          "retention_hours": 24
+        },
+        "label": "Apache Kafka"
+      },
+      {
+        "id": "postgresql",
+        "type": "database",
+        "position": {
+          "x": 535.8969975254874,
+          "y": 635.8115149955365
+        },
+        "config": {
+          "engine": "PostgreSQL 13",
+          "storage": "100GB SSD",
+          "replicas": 2,
+          "max_connections": 500,
+          "tables": [
+            {
+              "name": "riders",
+              "description": "Stores rider profiles",
+              "columns": [
+                {
+                  "name": "id",
+                  "type": "UUID",
+                  "primary_key": true
+                },
+                {
+                  "name": "name",
+                  "type": "VARCHAR(255)"
+                },
+                {
+                  "name": "email",
+                  "type": "VARCHAR(255)",
+                  "unique": true
+                },
+                {
+                  "name": "phone",
+                  "type": "VARCHAR(20)"
+                },
+                {
+                  "name": "password_hash",
+                  "type": "VARCHAR(255)"
+                },
+                {
+                  "name": "created_at",
+                  "type": "TIMESTAMP"
+                }
+              ]
+            },
+            {
+              "name": "drivers",
+              "description": "Stores driver profiles and vehicle info",
+              "columns": [
+                {
+                  "name": "id",
+                  "type": "UUID",
+                  "primary_key": true
+                },
+                {
+                  "name": "name",
+                  "type": "VARCHAR(255)"
+                },
+                {
+                  "name": "email",
+                  "type": "VARCHAR(255)",
+                  "unique": true
+                },
+                {
+                  "name": "phone",
+                  "type": "VARCHAR(20)"
+                },
+                {
+                  "name": "vehicle_model",
+                  "type": "VARCHAR(100)"
+                },
+                {
+                  "name": "license_plate",
+                  "type": "VARCHAR(20)"
+                },
+                {
+                  "name": "status",
+                  "type": "VARCHAR(20)"
+                },
+                {
+                  "name": "password_hash",
+                  "type": "VARCHAR(255)"
+                },
+                {
+                  "name": "created_at",
+                  "type": "TIMESTAMP"
+                }
+              ]
+            },
+            {
+              "name": "trips",
+              "description": "Stores trip records",
+              "columns": [
+                {
+                  "name": "id",
+                  "type": "UUID",
+                  "primary_key": true
+                },
+                {
+                  "name": "rider_id",
+                  "type": "UUID",
+                  "foreign_key": "riders.id"
+                },
+                {
+                  "name": "driver_id",
+                  "type": "UUID",
+                  "foreign_key": "drivers.id"
+                },
+                {
+                  "name": "status",
+                  "type": "VARCHAR(20)"
+                },
+                {
+                  "name": "pickup_location",
+                  "type": "POINT"
+                },
+                {
+                  "name": "dropoff_location",
+                  "type": "POINT"
+                },
+                {
+                  "name": "fare_amount",
+                  "type": "DECIMAL(10,2)"
+                },
+                {
+                  "name": "distance",
+                  "type": "FLOAT"
+                },
+                {
+                  "name": "duration",
+                  "type": "INTEGER"
+                },
+                {
+                  "name": "payment_status",
+                  "type": "VARCHAR(20)"
+                },
+                {
+                  "name": "created_at",
+                  "type": "TIMESTAMP"
+                },
+                {
+                  "name": "updated_at",
+                  "type": "TIMESTAMP"
+                }
+              ]
+            },
+            {
+              "name": "payments",
+              "description": "Stores payment transactions",
+              "columns": [
+                {
+                  "name": "id",
+                  "type": "UUID",
+                  "primary_key": true
+                },
+                {
+                  "name": "trip_id",
+                  "type": "UUID",
+                  "foreign_key": "trips.id"
+                },
+                {
+                  "name": "rider_id",
+                  "type": "UUID",
+                  "foreign_key": "riders.id"
+                },
+                {
+                  "name": "amount",
+                  "type": "DECIMAL(10,2)"
+                },
+                {
+                  "name": "status",
+                  "type": "VARCHAR(20)"
+                },
+                {
+                  "name": "provider",
+                  "type": "VARCHAR(50)"
+                },
+                {
+                  "name": "stripe_payment_intent_id",
+                  "type": "VARCHAR(255)"
+                },
+                {
+                  "name": "created_at",
+                  "type": "TIMESTAMP"
+                }
+              ]
+            }
+          ]
+        },
+        "label": "PostgreSQL (Primary + Replica)"
+      },
+      {
+        "id": "redis-cache",
+        "type": "caching",
+        "position": {
+          "x": 773.0398546683447,
+          "y": 635.8115149955365
+        },
+        "config": {
+          "memory": "10GB",
+          "nodes": 3,
+          "eviction_policy": "LRU"
+        },
+        "label": "Redis Cluster"
+      },
+      {
+        "id": "sms-email",
+        "type": "external-system",
+        "position": {
+          "x": 1010.1827118112018,
+          "y": 635.8115149955365
+        },
+        "config": {
+          "api_rate_limit": "100 requests/second"
+        },
+        "label": "Twilio / SendGrid"
+      },
+      {
+        "id": "cassandra-location",
+        "type": "database",
+        "position": {
+          "x": 1247.325568954059,
+          "y": 635.8115149955365
+        },
+        "config": {
+          "replication_factor": 3,
+          "consistency_level": "QUORUM",
+          "table_design": "location_updates (driver_id, timestamp, lat, lon)",
+          "tables": [
+            {
+              "name": "location_updates",
+              "description": "Stores real-time location updates from drivers",
+              "columns": [
+                {
+                  "name": "driver_id",
+                  "type": "UUID",
+                  "primary_key": true
+                },
+                {
+                  "name": "timestamp",
+                  "type": "TIMESTAMP",
+                  "clustering_key": true
+                },
+                {
+                  "name": "lat",
+                  "type": "DOUBLE"
+                },
+                {
+                  "name": "lon",
+                  "type": "DOUBLE"
+                }
+              ],
+              "options": {
+                "default_time_to_live": 86400
+              }
+            }
+          ]
+        },
+        "label": "Cassandra (Location Store)"
+      },
+      {
+        "id": "maps-api",
+        "type": "external-system",
+        "position": {
+          "x": 1484.4684260969161,
+          "y": 635.8115149955365
+        },
+        "config": {
+          "api_rate_limit": "1000 requests/second",
+          "authentication": "API key"
+        },
+        "label": "Google Maps API"
       }
     ],
     "edges": [
       {
-        "id": "edge-1783878092083",
-        "source": "node-1783878078640-odg5e",
-        "target": "node-1783878081740-p9dh2",
-        "sourcePort": "out",
-        "targetPort": "in",
-        "direction": "bidirectional"
+        "id": "edge-1783923192945-0",
+        "source": "alb",
+        "target": "rider-service",
+        "label": "API requests"
       },
       {
-        "id": "edge-1783878097850",
-        "source": "node-1783878078640-odg5e",
-        "target": "node-1783878083786-qqq26",
-        "sourcePort": "out",
-        "targetPort": "in",
-        "direction": "bidirectional"
+        "id": "edge-1783923192945-1",
+        "source": "alb",
+        "target": "driver-service",
+        "label": "API requests"
+      },
+      {
+        "id": "edge-1783923192945-2",
+        "source": "alb",
+        "target": "ride-service",
+        "label": "API requests"
+      },
+      {
+        "id": "edge-1783923192945-3",
+        "source": "alb",
+        "target": "pricing-service",
+        "label": "API requests"
+      },
+      {
+        "id": "edge-1783923192945-4",
+        "source": "alb",
+        "target": "payment-service",
+        "label": "API requests"
+      },
+      {
+        "id": "edge-1783923192945-5",
+        "source": "alb",
+        "target": "notification-service",
+        "label": "API requests"
+      },
+      {
+        "id": "edge-1783923192945-6",
+        "source": "alb",
+        "target": "tracking-service",
+        "label": "WebSocket connections"
+      },
+      {
+        "id": "edge-1783923192945-7",
+        "source": "rider-service",
+        "target": "postgresql",
+        "label": "User data CRUD"
+      },
+      {
+        "id": "edge-1783923192945-8",
+        "source": "rider-service",
+        "target": "redis-cache",
+        "label": "Cache user sessions"
+      },
+      {
+        "id": "edge-1783923192945-9",
+        "source": "rider-service",
+        "target": "kafka",
+        "label": "Publish ride request"
+      },
+      {
+        "id": "edge-1783923192945-10",
+        "source": "driver-service",
+        "target": "postgresql",
+        "label": "Driver data CRUD"
+      },
+      {
+        "id": "edge-1783923192945-11",
+        "source": "driver-service",
+        "target": "redis-cache",
+        "label": "Cache driver status"
+      },
+      {
+        "id": "edge-1783923192945-12",
+        "source": "driver-service",
+        "target": "kafka",
+        "label": "Publish driver availability"
+      },
+      {
+        "id": "edge-1783923192945-13",
+        "source": "ride-service",
+        "target": "postgresql",
+        "label": "Trip data CRUD"
+      },
+      {
+        "id": "edge-1783923192945-14",
+        "source": "ride-service",
+        "target": "redis-cache",
+        "label": "Cache current trips"
+      },
+      {
+        "id": "edge-1783923192945-15",
+        "source": "ride-service",
+        "target": "kafka",
+        "label": "Publish/Consume ride events"
+      },
+      {
+        "id": "edge-1783923192945-16",
+        "source": "ride-service",
+        "target": "pricing-service",
+        "label": "Get price estimate"
+      },
+      {
+        "id": "edge-1783923192945-17",
+        "source": "pricing-service",
+        "target": "postgresql",
+        "label": "Pricing config"
+      },
+      {
+        "id": "edge-1783923192945-18",
+        "source": "pricing-service",
+        "target": "redis-cache",
+        "label": "Cache surge factor"
+      },
+      {
+        "id": "edge-1783923192945-19",
+        "source": "pricing-service",
+        "target": "maps-api",
+        "label": "Distance/time estimation"
+      },
+      {
+        "id": "edge-1783923192945-20",
+        "source": "payment-service",
+        "target": "postgresql",
+        "label": "Transaction data"
+      },
+      {
+        "id": "edge-1783923192945-21",
+        "source": "payment-service",
+        "target": "payment-gateway",
+        "label": "Payment processing"
+      },
+      {
+        "id": "edge-1783923192945-22",
+        "source": "notification-service",
+        "target": "sms-email",
+        "label": "Send notifications"
+      },
+      {
+        "id": "edge-1783923192945-23",
+        "source": "tracking-service",
+        "target": "cassandra-location",
+        "label": "Write location updates"
+      },
+      {
+        "id": "edge-1783923192945-24",
+        "source": "tracking-service",
+        "target": "kafka",
+        "label": "Produce location stream"
+      },
+      {
+        "id": "edge-1783923192945-25",
+        "source": "kafka",
+        "target": "ride-service",
+        "label": "Consume location events for matching"
       }
     ],
     "groups": [
@@ -176,13 +714,7 @@
         },
         "width": 400,
         "height": 300,
-        "childNodeIds": [
-          "node-1783878078640-odg5e",
-          "node-1783878081740-p9dh2",
-          "node-1783878083786-qqq26",
-          "node-1783878232909-15aok",
-          "node-1783878248974-ggn7c"
-        ]
+        "childNodeIds": []
       },
       {
         "id": "group-1783879383864",
@@ -194,13 +726,7 @@
         },
         "width": 400,
         "height": 300,
-        "childNodeIds": [
-          "node-1783878078640-odg5e",
-          "node-1783878081740-p9dh2",
-          "node-1783878083786-qqq26",
-          "node-1783878232909-15aok",
-          "node-1783878248974-ggn7c"
-        ]
+        "childNodeIds": []
       }
     ]
   },
@@ -700,7 +1226,7 @@
       "calculations": ""
     },
     "createdAt": "2026-07-12T22:44:22.494Z",
-    "updatedAt": "2026-07-13T00:35:07.254Z",
+    "updatedAt": "2026-07-13T06:10:13.672Z",
     "ownerId": "anonymous"
   }
 ]

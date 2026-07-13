@@ -14,6 +14,7 @@ export interface NotesSection {
   functional: string
   nonFunctional: string
   calculations: string
+  architecture: string
 }
 
 export interface Board {

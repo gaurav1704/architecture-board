@@ -101,18 +101,45 @@ function CustomNode({ data, selected }: NodeProps<BoardNode & { layoutDirection?
 
   if (isChild) {
     return (
-      <MiniNode label={label} color={color} icon={icon} sub={subText} id={data.id} />
+      <MiniNode label={label} color={color} icon={icon} sub={subText} id={data.id} description={data.description} />
     )
   }
 
   return (
-    <div className={`custom-node ${selected ? 'selected' : ''}`} style={{ borderColor: color, background: '#1a1a2e' }}>
+    <div
+      className={`custom-node ${selected ? 'selected' : ''}`}
+      style={{ borderColor: color, background: '#1a1a2e', position: 'relative' }}
+      title={data.description || label}
+    >
       <Handle type="target" position={inPos} id="in" style={{ background: color }} />
       <div className="custom-node-header">
         <span className="custom-node-icon">{icon}</span>
         <span className="custom-node-label">{label}</span>
       </div>
       {subText && <div className="custom-node-sub">{subText}</div>}
+      {data.description && (
+        <div
+          title={data.description}
+          style={{
+            position: 'absolute',
+            top: 2,
+            right: 2,
+            width: 14,
+            height: 14,
+            borderRadius: '50%',
+            background: color,
+            color: '#fff',
+            fontSize: 10,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'help',
+            opacity: 0.85,
+          }}
+        >
+          ℹ
+        </div>
+      )}
       <Handle type="source" position={outPos} id="out" style={{ background: color }} />
     </div>
   )
@@ -151,15 +178,18 @@ function getSubText(data: BoardNode): string {
   }
 }
 
-function MiniNode({ label, color, icon, sub, id }: { label: string; color: string; icon?: string; sub?: string; id?: string }) {
+function MiniNode({ label, color, icon, sub, id, description }: { label: string; color: string; icon?: string; sub?: string; id?: string; description?: string }) {
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 3, padding: '1px 5px',
-      borderRadius: 4, border: `1.5px solid ${color}`, background: `${color}12`,
-      fontSize: 8, color: '#eee', width: '100%', boxSizing: 'border-box',
-      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-      position: 'relative',
-    }}>
+    <div
+      style={{
+        display: 'flex', alignItems: 'center', gap: 3, padding: '1px 5px',
+        borderRadius: 4, border: `1.5px solid ${color}`, background: `${color}12`,
+        fontSize: 8, color: '#eee', width: '100%', boxSizing: 'border-box',
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        position: 'relative',
+      }}
+      title={description || label}
+    >
       {id && <Handle type="target" position={inPos} id={`${id}-in`} style={{ background: color, width: 6, height: 6, top: inPos === Position.Top ? 0 : '50%', left: inPos === Position.Left ? 0 : '50%', transform: 'translate(-50%, -50%)' }} />}
       {icon && <span style={{ fontSize: 9 }}>{icon}</span>}
       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>

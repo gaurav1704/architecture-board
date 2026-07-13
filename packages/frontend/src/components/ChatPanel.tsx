@@ -122,11 +122,13 @@ export function ChatPanel() {
     console.log(`[AI] ${mode} result received:`, { hasNodes: !!data.proposedNodes, hasChanges: !!data.proposedChanges, hasScore: data.score })
     const ts = new Date().toISOString()
 
-    if (data.suggestedNotes) {
+    if (data.suggestedNotes || data.architectureDescription) {
+      const suggestedArch = data.architectureDescription || data.suggestedNotes?.architecture
       setNotes({
-        functional: data.suggestedNotes.functional || notes.functional,
-        nonFunctional: data.suggestedNotes.nonFunctional || notes.nonFunctional,
-        calculations: data.suggestedNotes.calculations || notes.calculations,
+        functional: data.suggestedNotes?.functional || notes.functional,
+        nonFunctional: data.suggestedNotes?.nonFunctional || notes.nonFunctional,
+        calculations: data.suggestedNotes?.calculations || notes.calculations,
+        architecture: suggestedArch || notes.architecture,
       })
     }
 

@@ -1,4 +1,5 @@
 import type { NodeTypeDefinition, NodeConfig } from './base.js'
+import { capacityPlanningDefault, capacityPlanningFields } from './capacity.js'
 
 export interface LoadBalancerConfig extends NodeConfig {
   type: 'alb' | 'nlb'
@@ -44,6 +45,7 @@ export const loadBalancerDefinition: NodeTypeDefinition<LoadBalancerConfig> = {
       cooldownSeconds: 300,
     },
     routes: [],
+    capacityPlanning: { ...capacityPlanningDefault, instanceCount: 2, scalingMode: 'auto', minInstances: 2, maxInstances: 10, instanceType: 't3.medium' },
   },
   configFields: [
     {
@@ -103,5 +105,6 @@ export const loadBalancerDefinition: NodeTypeDefinition<LoadBalancerConfig> = {
         { key: 'isActive', label: 'Active', type: 'boolean', defaultValue: true },
       ],
     },
+    capacityPlanningFields,
   ],
 }

@@ -54,6 +54,7 @@ export interface ProposedNode {
   id: string
   type: string
   label: string
+  description?: string
   config: Record<string, unknown>
 }
 
@@ -61,6 +62,7 @@ export interface ProposedEdge {
   source: string
   target: string
   label?: string
+  description?: string
 }
 
 export interface AiCreateResult {
@@ -75,6 +77,7 @@ export interface NotesSuggestion {
   functional: string
   nonFunctional: string
   calculations: string
+  architecture: string
 }
 
 export interface NodeChangeAcceptance {

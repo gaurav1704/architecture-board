@@ -1,4 +1,5 @@
 import type { NodeTypeDefinition, NodeConfig } from './base.js'
+import { capacityPlanningDefault, capacityPlanningFields } from './capacity.js'
 
 export type MessagingEngine = 'kafka' | 'rabbitmq'
 
@@ -36,6 +37,7 @@ export const messagingQueueDefinition: NodeTypeDefinition<MessagingQueueConfig> 
     brokers: 3,
     topics: [],
     zookeeperEnsemble: 3,
+    capacityPlanning: { ...capacityPlanningDefault, instanceCount: 3, scalingMode: 'fixed', minInstances: 3, maxInstances: 15, instanceType: 'm5.large' },
   },
   configFields: [
     {
@@ -78,5 +80,6 @@ export const messagingQueueDefinition: NodeTypeDefinition<MessagingQueueConfig> 
         },
       ],
     },
+    capacityPlanningFields,
   ],
 }

@@ -49,6 +49,7 @@ function FlowCanvas() {
   const activeTool = useBoardStore((s) => s.activeTool)
   const layoutDirection = useBoardStore((s) => s.layoutDirection)
   const edgeStylePref = useBoardStore((s) => s.edgeStyle)
+  const chatOpen = useBoardStore((s) => s.chatOpen)
 
   const reactFlowInstance = useReactFlow()
   const [nodes, setLocalNodes, onNodesChange] = useNodesState([])
@@ -67,44 +68,19 @@ function FlowCanvas() {
   }, [storeNodes, setLocalNodes, layoutDirection])
 
   useEffect(() => {
-    // Detect bidirectional pairs: (A→B) + (B→A) → merge into one bidirectional edge
-    const reverseMap = new Map<string, string>()
-    for (const e of storeEdges) {
-      const rev = `${e.target}|${e.source}`
-      if (!reverseMap.has(rev)) reverseMap.set(rev, e.id)
-    }
-
-    let mergedDirections = new Map<string, string>()
-    let removedIds = new Set<string>()
-    for (const e of storeEdges) {
-      const key = `${e.source}|${e.target}`
-      const revKey = `${e.target}|${e.source}`
-      if (reverseMap.has(key) && reverseMap.get(key) !== e.id) {
-        // This edge has a reverse pair — make it bidirectional and mark reverse for removal
-        mergedDirections.set(e.source + e.target, 'bidirectional')
-        const revId = reverseMap.get(key)
-        if (revId && revId !== e.id) {
-          mergedDirections.set(e.target + e.source, 'bidirectional')
-          removedIds.add(revId)
-        }
-      }
-    }
-
-    // Calculate offsets for remaining edges (after removing duplicates)
-    const remaining = storeEdges.filter((e) => !removedIds.has(e.id))
+    // Calculate offsets for parallel edges between the same pair of nodes
     const pairs = new Map<string, { count: number; idx: number }>()
-    for (const e of remaining) {
+    for (const e of storeEdges) {
       const key = `${e.source}|${e.target}`
       if (!pairs.has(key)) pairs.set(key, { count: 0, idx: 0 })
       pairs.get(key)!.count++
     }
 
     setLocalEdges(
-      remaining.map((e) => {
+      storeEdges.map((e) => {
         const key = `${e.source}|${e.target}`
         const p = pairs.get(key)!
         const offset = p.count > 1 ? (p.idx++ - (p.count - 1) / 2) * 24 : 0
-        const dir = mergedDirections.has(e.source + e.target) ? 'bidirectional' : (e.direction || 'ltr')
         return {
           id: e.id,
           source: e.source,
@@ -112,7 +88,7 @@ function FlowCanvas() {
           sourceHandle: e.sourcePort ?? null,
           targetHandle: e.targetPort ?? null,
           label: e.label,
-          data: { direction: dir, offset, edgeStyle: edgeStylePref },
+          data: { direction: e.direction || 'ltr', offset, edgeStyle: edgeStylePref, description: e.description },
           type: 'default',
         }
       })
@@ -122,6 +98,21 @@ function FlowCanvas() {
   const onConnect: OnConnect = useCallback(
     (connection: Connection) => {
       if (!connection.source || !connection.target) return
+
+      // If a reverse edge (target→source) already exists, upgrade it to bidirectional
+      const reverseEdge = storeEdges.find(
+        (e) => e.source === connection.target && e.target === connection.source
+      )
+      if (reverseEdge) {
+        if (reverseEdge.direction !== 'bidirectional') {
+          updateEdgeDirection(reverseEdge.id, 'bidirectional')
+        }
+        return
+      }
+
+      // Skip exact duplicates (same source→target)
+      if (storeEdges.some((e) => e.source === connection.source && e.target === connection.target)) return
+
       const id = `edge-${Date.now()}`
       const dir = flowDirection
       const edge: Edge = {
@@ -146,7 +137,7 @@ function FlowCanvas() {
         },
       ])
     },
-    [setLocalEdges, setEdges, storeEdges, flowDirection, edgeStylePref]
+    [setLocalEdges, setEdges, storeEdges, flowDirection, edgeStylePref, updateEdgeDirection]
   )
 
   const onNodeClick = useCallback(
@@ -625,7 +616,7 @@ function FlowCanvas() {
         )}
         <Controls />
         <MiniMap
-          style={{ background: '#1a1a2e' }}
+          style={{ background: '#1a1a2e', right: chatOpen ? 392 : 10 }}
           nodeColor={(n) => { const def = getNodeType((n.data as any)?.type); return def?.color || '#3a3a5a' }}
           nodeStrokeColor={(n) => { const def = getNodeType((n.data as any)?.type); return def?.color || '#4a4a6a' }}
           nodeBorderRadius={4}
@@ -940,16 +931,33 @@ export function App() {
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId)
 
+  const chatOpen = useBoardStore((s) => s.chatOpen)
+  const sidebarOpen = useBoardStore((s) => s.sidebarOpen)
+  const toggleSidebar = useBoardStore((s) => s.toggleSidebar)
+
   return (
     <ReactFlowProvider>
-      <div className="app-container">
-        <Sidebar />
-        <div style={{ position: 'absolute', right: 12, top: 56, zIndex: 30 }}>
-          <UserList />
-        </div>
-        <div style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column' }}>
-          <Topbar />
-          <div style={{ flex: 1, marginTop: 48 }}>
+      <div className="app-container" style={{ flexDirection: 'column' }}>
+        <Topbar />
+        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+          <Sidebar />
+          <div style={{ flex: 1, position: 'relative' }}>
+            <div style={{
+              position: 'absolute',
+              right: chatOpen ? 392 : 12,
+              top: 12,
+              zIndex: 50,
+              transition: 'right 0.2s ease',
+            }}>
+              <UserList />
+            </div>
+            {!sidebarOpen && (
+              <div style={{ position: 'absolute', left: 12, top: 12, zIndex: 20 }}>
+                <button className="sidebar-floating-btn" onClick={toggleSidebar} title="Open palette">
+                  ☰
+                </button>
+              </div>
+            )}
             <FlowCanvas />
           </div>
         </div>

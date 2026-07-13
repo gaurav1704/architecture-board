@@ -51,6 +51,31 @@ export function NodeEditorModal() {
               placeholder="Node name"
             />
           </div>
+          <div className="config-field">
+            <label>Description</label>
+            <p style={{ fontSize: 11, color: '#888', marginBottom: 6 }}>
+              Explain what this component does and why it is part of the architecture.
+            </p>
+            <textarea
+              value={selectedNode.description || ''}
+              onChange={(e) => useBoardStore.getState().updateNodeDescription(selectedNode.id, e.target.value)}
+              placeholder="What does this node do? Why is it needed?"
+              rows={4}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: 6,
+                border: '1px solid #3a3a5a',
+                background: '#0f0f1a',
+                color: '#eee',
+                fontSize: 13,
+                outline: 'none',
+                resize: 'vertical',
+                fontFamily: 'inherit',
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
           {definition.configFields.map((field) => (
             <ConfigFieldRenderer
               key={field.key}
