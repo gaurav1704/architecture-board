@@ -1,0 +1,706 @@
+[
+  {
+    "id": "29bbd97f-2055-420e-a8f0-428ce68959dc",
+    "name": "Persist Test",
+    "shareId": "82bf4a56",
+    "nodes": [
+      {
+        "id": "n1",
+        "type": "database",
+        "position": {
+          "x": 100,
+          "y": 100
+        },
+        "config": {
+          "engine": "postgres"
+        },
+        "label": "DB"
+      }
+    ],
+    "edges": [],
+    "groups": [],
+    "createdAt": "2026-07-12T17:40:01.499Z",
+    "updatedAt": "2026-07-12T17:40:01.587Z",
+    "ownerId": "anonymous"
+  },
+  {
+    "id": "36533028-516e-4a06-8c0e-bbb359e8217e",
+    "name": "Untitled Board",
+    "shareId": "c58a29c3",
+    "nodes": [],
+    "edges": [],
+    "groups": [],
+    "createdAt": "2026-07-12T17:41:14.453Z",
+    "updatedAt": "2026-07-12T17:41:14.453Z",
+    "ownerId": "anonymous"
+  },
+  {
+    "id": "38c3b74b-0059-462e-85be-36545e138d34",
+    "name": "Untitled Board",
+    "shareId": "0a8c7d06",
+    "createdAt": "2026-07-12T17:41:14.454Z",
+    "updatedAt": "2026-07-13T00:31:06.985Z",
+    "ownerId": "anonymous",
+    "problemStatement": "",
+    "notes": {
+      "functional": "",
+      "nonFunctional": "",
+      "calculations": ""
+    },
+    "nodes": [
+      {
+        "id": "node-1783878078640-odg5e",
+        "type": "load-balancer",
+        "position": {
+          "x": 220.48670735726364,
+          "y": 405.5231076504565
+        },
+        "config": {
+          "type": "alb",
+          "autoscaling": {
+            "minCount": 1,
+            "maxCount": 10,
+            "desiredCount": 2,
+            "scaleUpThreshold": 70,
+            "scaleDownThreshold": 30,
+            "cooldownSeconds": 300
+          },
+          "routes": []
+        },
+        "label": "Load Balancer"
+      },
+      {
+        "id": "node-1783878081740-p9dh2",
+        "type": "application-server",
+        "position": {
+          "x": 655.7573792454667,
+          "y": 320.2809832614267
+        },
+        "config": {
+          "role": "web-server",
+          "port": 8080,
+          "routes": [],
+          "envVars": {}
+        },
+        "label": "Application Server"
+      },
+      {
+        "id": "node-1783878083786-qqq26",
+        "type": "application-server",
+        "position": {
+          "x": 658,
+          "y": 495
+        },
+        "config": {
+          "role": "web-server",
+          "port": 8080,
+          "routes": [],
+          "envVars": {}
+        },
+        "label": "Application Server"
+      },
+      {
+        "id": "node-1783878232909-15aok",
+        "type": "load-balancer",
+        "position": {
+          "x": 222,
+          "y": 236
+        },
+        "config": {
+          "type": "alb",
+          "autoscaling": {
+            "minCount": 1,
+            "maxCount": 10,
+            "desiredCount": 2,
+            "scaleUpThreshold": 70,
+            "scaleDownThreshold": 30,
+            "cooldownSeconds": 300
+          },
+          "routes": [
+            {
+              "path": "",
+              "method": "",
+              "targetPort": 80,
+              "targetProtocol": "",
+              "healthCheckPath": "",
+              "isActive": true,
+              "id": "routes-1783879741867-bzz"
+            }
+          ]
+        },
+        "label": "Load Balancer"
+      },
+      {
+        "id": "node-1783878248974-ggn7c",
+        "type": "database",
+        "position": {
+          "x": 221,
+          "y": 575
+        },
+        "config": {
+          "engine": "postgres",
+          "version": "16",
+          "storage": 100,
+          "tables": [],
+          "relations": []
+        },
+        "label": "Database"
+      }
+    ],
+    "edges": [
+      {
+        "id": "edge-1783878092083",
+        "source": "node-1783878078640-odg5e",
+        "target": "node-1783878081740-p9dh2",
+        "sourcePort": "out",
+        "targetPort": "in",
+        "direction": "bidirectional"
+      },
+      {
+        "id": "edge-1783878097850",
+        "source": "node-1783878078640-odg5e",
+        "target": "node-1783878083786-qqq26",
+        "sourcePort": "out",
+        "targetPort": "in",
+        "direction": "bidirectional"
+      }
+    ],
+    "groups": [
+      {
+        "id": "group-1783879382953",
+        "name": "Group",
+        "description": "",
+        "position": {
+          "x": 124,
+          "y": 200
+        },
+        "width": 400,
+        "height": 300,
+        "childNodeIds": [
+          "node-1783878078640-odg5e",
+          "node-1783878081740-p9dh2",
+          "node-1783878083786-qqq26",
+          "node-1783878232909-15aok",
+          "node-1783878248974-ggn7c"
+        ]
+      },
+      {
+        "id": "group-1783879383864",
+        "name": "Group",
+        "description": "",
+        "position": {
+          "x": 124,
+          "y": 200
+        },
+        "width": 400,
+        "height": 300,
+        "childNodeIds": [
+          "node-1783878078640-odg5e",
+          "node-1783878081740-p9dh2",
+          "node-1783878083786-qqq26",
+          "node-1783878232909-15aok",
+          "node-1783878248974-ggn7c"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "0a41bc25-3004-4574-96bf-a7f84750f057",
+    "name": "Untitled Board",
+    "shareId": "47de59b5",
+    "nodes": [],
+    "edges": [],
+    "groups": [],
+    "createdAt": "2026-07-12T17:58:28.873Z",
+    "updatedAt": "2026-07-12T17:58:28.873Z",
+    "ownerId": "anonymous"
+  },
+  {
+    "id": "b2b072ae-eb9d-4d22-b344-2fcae8371bed",
+    "name": "Untitled Board",
+    "shareId": "750a27de",
+    "nodes": [],
+    "edges": [],
+    "groups": [],
+    "createdAt": "2026-07-12T17:58:28.874Z",
+    "updatedAt": "2026-07-12T22:20:05.319Z",
+    "ownerId": "anonymous",
+    "problemStatement": "",
+    "notes": {
+      "functional": "",
+      "nonFunctional": "",
+      "calculations": ""
+    }
+  },
+  {
+    "id": "2f03bd1a-ed1e-435d-a259-f7cba7befcb8",
+    "name": "Untitled Board",
+    "shareId": "19ee2537",
+    "nodes": [],
+    "edges": [],
+    "groups": [],
+    "problemStatement": "",
+    "notes": {
+      "functional": "",
+      "nonFunctional": "",
+      "calculations": ""
+    },
+    "createdAt": "2026-07-12T22:44:22.492Z",
+    "updatedAt": "2026-07-12T22:44:22.492Z",
+    "ownerId": "anonymous"
+  },
+  {
+    "id": "fb3a7994-e88e-411c-bbea-3a98da2f1071",
+    "name": "Untitled Board",
+    "shareId": "78c35cf7",
+    "nodes": [
+      {
+        "id": "lb_http",
+        "type": "load-balancer",
+        "position": {
+          "x": 652.8571428571429,
+          "y": 60
+        },
+        "config": {
+          "type": "ALB",
+          "protocol": "HTTPS and WSS",
+          "algorithm": "least_connections",
+          "ssl_certificate": "managed",
+          "ssl_policy": "ELBSecurityPolicy-2016-08",
+          "listener_rules": "path-based: /api/* → api; /chat/* → chat; /media/* → media; /signal/* → signal",
+          "deregistration_delay": 5,
+          "stickiness": "disabled"
+        },
+        "label": "HTTP/WebSocket Load Balancer"
+      },
+      {
+        "id": "lb_turn",
+        "type": "load-balancer",
+        "position": {
+          "x": 890,
+          "y": 60
+        },
+        "config": {
+          "type": "NLB",
+          "protocol": "UDP",
+          "algorithm": "least_connections",
+          "ssl_certificate": "none",
+          "listener_rules": "udp/3478 → turn servers",
+          "proxy_protocol": false
+        },
+        "label": "TURN Load Balancer"
+      },
+      {
+        "id": "api",
+        "type": "application-server",
+        "position": {
+          "x": 172.34602568269418,
+          "y": 269.3738868313625
+        },
+        "config": {
+          "instance_type": "t3.large",
+          "min": 5,
+          "max": 50,
+          "auto_scaling": true,
+          "health_check": "/health",
+          "listener": "REST (auth, profile, group admin)",
+          "scaling_metric": "CPUUtilization (60%)"
+        },
+        "label": "API Servers"
+      },
+      {
+        "id": "signal",
+        "type": "application-server",
+        "position": {
+          "x": 409.4888828255513,
+          "y": 269.3738868313625
+        },
+        "config": {
+          "instance_type": "t3.medium",
+          "min": 3,
+          "max": 20,
+          "auto_scaling": true,
+          "health_check": "/health",
+          "listener": "WebSocket (call signaling, room management)",
+          "connections_per_node": "5000",
+          "scaling_metric": "ActiveConnections"
+        },
+        "label": "Call Signaling Servers"
+      },
+      {
+        "id": "turn",
+        "type": "application-server",
+        "position": {
+          "x": 646.6317399684085,
+          "y": 269.3738868313625
+        },
+        "config": {
+          "instance_type": "c5.4xlarge",
+          "min": 2,
+          "max": 20,
+          "auto_scaling": true,
+          "health_check": "UDP port 3478",
+          "protocol": "UDP (3478), TCP (3478)",
+          "allocation_per_node": "1000 concurrent calls",
+          "scaling_metric": "ConcurrentCalls"
+        },
+        "label": "TURN Servers"
+      },
+      {
+        "id": "chat",
+        "type": "application-server",
+        "position": {
+          "x": 883.7745971112656,
+          "y": 269.3738868313625
+        },
+        "config": {
+          "instance_type": "c5.xlarge",
+          "min": 10,
+          "max": 100,
+          "auto_scaling": true,
+          "health_check": "/health",
+          "listener": "WebSocket (real-time messaging, presence)",
+          "connections_per_node": "10000",
+          "sticky_sessions": true,
+          "scaling_metric": "ActiveConnections / CPUUtilization"
+        },
+        "label": "Chat Servers"
+      },
+      {
+        "id": "media",
+        "type": "application-server",
+        "position": {
+          "x": 1120.9174542541227,
+          "y": 269.3738868313625
+        },
+        "config": {
+          "instance_type": "c5.2xlarge",
+          "min": 3,
+          "max": 30,
+          "auto_scaling": true,
+          "health_check": "/health",
+          "listener": "REST (upload, thumbnail generation, transcoding)",
+          "scaling_metric": "DiskQueueDepth / CPUUtilization"
+        },
+        "label": "Media Servers"
+      },
+      {
+        "id": "cdn",
+        "type": "external-system",
+        "position": {
+          "x": 1306.735482243684,
+          "y": 392.3597981986942
+        },
+        "config": {
+          "service": "AWS CloudFront",
+          "origin": "S3 Bucket",
+          "ssl_certificate": "managed",
+          "distribution_type": "web",
+          "compression": true,
+          "cache_behavior": "path /media/*"
+        },
+        "label": "Content Delivery Network"
+      },
+      {
+        "id": "cache",
+        "type": "caching",
+        "position": {
+          "x": 71.69010860078038,
+          "y": 508.99008904594626
+        },
+        "config": {
+          "engine": "Redis",
+          "version": "7",
+          "cluster_mode": true,
+          "shards": 10,
+          "replicas_per_shard": 2,
+          "memory": "200GB",
+          "eviction_policy": "allkeys-lru",
+          "persistence": "AOF every 1s",
+          "use_cases": "session, presence, group membership cache, message precomputation"
+        },
+        "label": "Redis Cluster"
+      },
+      {
+        "id": "kms",
+        "type": "external-system",
+        "position": {
+          "x": 308.8329657436375,
+          "y": 508.99008904594626
+        },
+        "config": {
+          "service": "AWS KMS",
+          "key_type": "symmetric for account-level encryption, asymmetric for client key verification",
+          "endpoint": "https://kms.us-east-1.amazonaws.com",
+          "throttling": "5000 requests per second (burst 10000)",
+          "auto_key_rotation": true
+        },
+        "label": "Key Management Service"
+      },
+      {
+        "id": "user_db",
+        "type": "database",
+        "position": {
+          "x": 545.9758228864946,
+          "y": 508.99008904594626
+        },
+        "config": {
+          "engine": "PostgreSQL",
+          "version": "15",
+          "storage": "10TB",
+          "replication": "Multi-AZ with read replicas (2)",
+          "backup": "daily with 30-day retention",
+          "sharding": "by user_id hash",
+          "read_replicas": 3,
+          "auto_scaling": true
+        },
+        "label": "User & Group Database"
+      },
+      {
+        "id": "mq",
+        "type": "messaging-queue",
+        "position": {
+          "x": 783.1186800293518,
+          "y": 508.99008904594626
+        },
+        "config": {
+          "type": "SQS",
+          "queue_type": "standard",
+          "visibility_timeout": "30s",
+          "dead_letter_queue": true,
+          "message_retention": "14 days",
+          "queues": [
+            "send_notification",
+            "media_processing",
+            "message_delivery",
+            "group_fanout",
+            "call_recording"
+          ]
+        },
+        "label": "Message Queues"
+      },
+      {
+        "id": "msg_db",
+        "type": "database",
+        "position": {
+          "x": 1020.2615371722089,
+          "y": 508.99008904594626
+        },
+        "config": {
+          "engine": "Cassandra",
+          "version": "4.0",
+          "storage": "200TB",
+          "replication_factor": 3,
+          "consistency": "QUORUM for writes, ONE for reads",
+          "compaction": "TimeWindowCompactionStrategy",
+          "backup": "incremental to S3 every 2h",
+          "auto_scaling": true
+        },
+        "label": "Message Store"
+      },
+      {
+        "id": "push",
+        "type": "external-system",
+        "position": {
+          "x": 791.7484017173224,
+          "y": 687.2642452078439
+        },
+        "config": {
+          "service": "AWS SNS + FCM/APNs",
+          "endpoint": "https://sns.us-east-1.amazonaws.com",
+          "throttling": "10000 pushes per second per platform",
+          "platform_applications": [
+            "FCM",
+            "APNs"
+          ]
+        },
+        "label": "Push Notification Service"
+      },
+      {
+        "id": "storage",
+        "type": "external-system",
+        "position": {
+          "x": 1167.7143720457407,
+          "y": 692.7969667077524
+        },
+        "config": {
+          "service": "AWS S3",
+          "bucket_versioning": true,
+          "storage_class": "Standard for recent, Glacier for old",
+          "lifecycle_policy": "30d -> Standard-IA, 90d -> Glacier",
+          "endpoint": "https://s3.amazonaws.com",
+          "throttling": "unlimited (throughput auto-scales)"
+        },
+        "label": "Media Object Store"
+      }
+    ],
+    "edges": [
+      {
+        "id": "edge-1783902312309-0",
+        "source": "lb_http",
+        "target": "api",
+        "label": "path /api/*"
+      },
+      {
+        "id": "edge-1783902312309-1",
+        "source": "lb_http",
+        "target": "chat",
+        "label": "path /chat/* (WS)"
+      },
+      {
+        "id": "edge-1783902312309-2",
+        "source": "lb_http",
+        "target": "media",
+        "label": "path /media/* (upload)"
+      },
+      {
+        "id": "edge-1783902312309-3",
+        "source": "lb_http",
+        "target": "signal",
+        "label": "path /signal/* (WS)"
+      },
+      {
+        "id": "edge-1783902312309-4",
+        "source": "lb_turn",
+        "target": "turn",
+        "label": "udp/tcp 3478"
+      },
+      {
+        "id": "edge-1783902312309-5",
+        "source": "api",
+        "target": "user_db",
+        "label": "user & group CRUD"
+      },
+      {
+        "id": "edge-1783902312309-6",
+        "source": "api",
+        "target": "cache",
+        "label": "session caching"
+      },
+      {
+        "id": "edge-1783902312309-7",
+        "source": "api",
+        "target": "kms",
+        "label": "key generation & decryption"
+      },
+      {
+        "id": "edge-1783902312309-8",
+        "source": "api",
+        "target": "mq",
+        "label": "async job sending (welcome email, etc.)"
+      },
+      {
+        "id": "edge-1783902312309-9",
+        "source": "chat",
+        "target": "user_db",
+        "label": "user lookup, presence"
+      },
+      {
+        "id": "edge-1783902312309-10",
+        "source": "chat",
+        "target": "msg_db",
+        "label": "store & retrieve messages"
+      },
+      {
+        "id": "edge-1783902312309-11",
+        "source": "chat",
+        "target": "cache",
+        "label": "presence, message cache"
+      },
+      {
+        "id": "edge-1783902312309-12",
+        "source": "chat",
+        "target": "mq",
+        "label": "fanout, notification triggers"
+      },
+      {
+        "id": "edge-1783902312309-13",
+        "source": "chat",
+        "target": "kms",
+        "label": "wrap/unwrap message keys"
+      },
+      {
+        "id": "edge-1783902312309-14",
+        "source": "media",
+        "target": "storage",
+        "label": "store uploaded files"
+      },
+      {
+        "id": "edge-1783902312309-15",
+        "source": "media",
+        "target": "user_db",
+        "label": "media metadata"
+      },
+      {
+        "id": "edge-1783902312309-16",
+        "source": "media",
+        "target": "mq",
+        "label": "media processing (thumbnail, etc.)"
+      },
+      {
+        "id": "edge-1783902312309-17",
+        "source": "media",
+        "target": "cdn",
+        "label": "origin pull for cached content"
+      },
+      {
+        "id": "edge-1783902312309-18",
+        "source": "signal",
+        "target": "cache",
+        "label": "session & call state"
+      },
+      {
+        "id": "edge-1783902312309-19",
+        "source": "signal",
+        "target": "user_db",
+        "label": "user info lookup"
+      },
+      {
+        "id": "edge-1783902312309-20",
+        "source": "signal",
+        "target": "mq",
+        "label": "start/stop call events"
+      },
+      {
+        "id": "edge-1783902312309-21",
+        "source": "turn",
+        "target": "cache",
+        "label": "turn session management"
+      },
+      {
+        "id": "edge-1783902312309-22",
+        "source": "mq",
+        "target": "push",
+        "label": "send push notifications"
+      },
+      {
+        "id": "edge-1783902312309-23",
+        "source": "mq",
+        "target": "chat",
+        "label": "deliver queued messages when user reconnects"
+      },
+      {
+        "id": "edge-1783902312309-24",
+        "source": "mq",
+        "target": "media",
+        "label": "trigger media processing"
+      },
+      {
+        "id": "edge-1783902312309-25",
+        "source": "cdn",
+        "target": "storage",
+        "label": "S3 origin fetch"
+      }
+    ],
+    "groups": [],
+    "problemStatement": "",
+    "notes": {
+      "functional": "",
+      "nonFunctional": "",
+      "calculations": ""
+    },
+    "createdAt": "2026-07-12T22:44:22.494Z",
+    "updatedAt": "2026-07-13T00:35:07.254Z",
+    "ownerId": "anonymous"
+  }
+]
